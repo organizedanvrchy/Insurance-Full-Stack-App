@@ -1,9 +1,14 @@
 /* DEMO DATA: 6 customers with realistic histories.
-   Password for every demo customer:  Demo#2026pass     (emails all end in @demo.example)
+   Password for every demo customer:  Demo#2026pass     
+   (emails all end in @demo.example)
 
-   Requires: 10_seed_policies.sql (the plans) and an existing admin account (used as the claim reviewer).
-   Safe to re-run: skipped if demo customers already exist. Remove everything with 12_remove_demo_data.sql.
-   All dates are relative to today. The ages in the quote breakdown labels assume an October 2026 run. */
+   Requires: 10_seed_policies.sql (the plans) and an 
+   existing admin account (used as the claim reviewer).
+   Safe to re-run: skipped if demo customers already exist. 
+   Remove everything with 12_remove_demo_data.sql.
+   All dates are relative to today. The ages in the quote 
+   breakdown labels assume an October 2026 run. 
+*/
 
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
@@ -36,7 +41,9 @@ IF @AdminId IS NULL
 
 BEGIN TRANSACTION;
 
-/* ---------------------------------------------------------------- 1. CUSTOMERS */
+/* 
+1. CUSTOMERS 
+*/
 INSERT INTO dbo.Users (FullName, Email, PasswordHash, Phone, Address, Role, IsActive, CreatedAt)
 VALUES
  (N'Emma Carter',     N'emma.carter@demo.example',     N'$2a$11$DeKme8rKt71zDTH/0vm.0.SO0VNtq/tAN1/YT8zDh5vauglwgwh62', N'(203) 555-0141', N'48 Maple Avenue, Stamford, CT 06902',     'Customer', 1, DATEADD(DAY, -140, SYSUTCDATETIME())),
@@ -46,9 +53,11 @@ VALUES
  (N'Sofia Rodriguez', N'sofia.rodriguez@demo.example', N'$2a$11$fLptEy9RudVQ53M/5gUKYudojXwDuknuXdTvICUC5sEH29VgtaL6u', N'(860) 555-0126', N'14 Elm Court, Apt 3B, Hartford, CT 06103',  'Customer', 1, DATEADD(DAY, -2,   SYSUTCDATETIME())),
  (N'Tyler Brooks',    N'tyler.brooks@demo.example',    N'$2a$11$cS0CMCNU8xHtOk5YTfml2u4pOEPQIAASd7WnLGzECeh9vvgMcgPbi', N'(203) 555-0159', N'360 Ridge Road, Danbury, CT 06810',        'Customer', 0, DATEADD(DAY, -100, SYSUTCDATETIME()));
 
-/* ---------------------------------------------------------------- 2. ENROLLMENT PLAN
-   One row per policy purchase. PaidCount = how many installments (from the first) are paid.
-   Answers / Breakdown / premiums match what the rating engine produces for those answers. */
+/* 
+2. ENROLLMENT PLAN
+One row per policy purchase. PaidCount = how many installments (from the first) are paid.
+Answers / Breakdown / premiums match what the rating engine produces for those answers. 
+*/
 CREATE TABLE #Spec (
     Email          NVARCHAR(256),
     PolicyName     NVARCHAR(100),
@@ -116,7 +125,9 @@ VALUES
   N'[{"Label":"Driver age 26","Multiplier":1.00},{"Label":"Vehicle age 14 yr","Multiplier":0.90},{"Label":"At-fault accidents: 2","Multiplier":1.70},{"Label":"Mileage: 7,500 to 15,000","Multiplier":1.00}]',
   75.00, 114.75);
 
-/* ---------------------------------------------------------------- 3. ENROLLMENTS */
+/*
+3. ENROLLMENTS 
+*/
 INSERT INTO dbo.Enrollments (UserId, PolicyId, StartDate, EndDate, MonthlyPremium, Status, CreatedAt)
 SELECT u.UserId, p.PolicyId, st.StartDate, DATEADD(MONTH, p.TermMonths, st.StartDate), s.MonthlyPremium, s.EnrollStatus,
        CASE WHEN st.StartDate < @Today
@@ -127,7 +138,9 @@ JOIN dbo.Users u    ON u.Email = s.Email
 JOIN dbo.Policies p ON p.PolicyName = s.PolicyName
 CROSS APPLY (SELECT DATEADD(DAY, -s.StartDaysAgo, DATEADD(MONTH, -s.StartMonthsAgo, @Today)) AS StartDate) st;
 
-/* ---------------------------------------------------------------- 4. QUOTES (each enrollment came from one) */
+/*
+4. QUOTES (each enrollment came from one) 
+*/
 INSERT INTO dbo.Quotes (UserId, PolicyId, Answers, Breakdown, BasePremium, MonthlyPremium, CreatedAt, ExpiresAt, EnrollmentId)
 SELECT e.UserId, e.PolicyId, s.Answers, s.Breakdown, s.BasePremium, s.MonthlyPremium,
        DATEADD(DAY, -1, e.CreatedAt), DATEADD(DAY, 29, e.CreatedAt), e.EnrollmentId
@@ -136,9 +149,11 @@ JOIN dbo.Users u       ON u.Email = s.Email
 JOIN dbo.Policies p    ON p.PolicyName = s.PolicyName
 JOIN dbo.Enrollments e ON e.UserId = u.UserId AND e.PolicyId = p.PolicyId;
 
-/* ---------------------------------------------------------------- 5. PREMIUM PAYMENTS
-   One row per month of the term. The first PaidCount are paid on their due date; the rest are pending
-   (the payments view shows Pending rows more than 5 days past due as Overdue). */
+/* 
+5. PREMIUM PAYMENTS
+One row per month of the term. The first PaidCount are paid on their due date; the rest are pending
+(the payments view shows Pending rows more than 5 days past due as Overdue). 
+*/
 ;WITH Nums AS (
     SELECT 0 AS N
     UNION ALL
@@ -157,8 +172,11 @@ CROSS APPLY (SELECT DATEADD(MONTH, n.N, e.StartDate) AS DueDate) d
 WHERE NOT (s.EnrollStatus = 'Cancelled' AND n.N >= s.PaidCount)   -- cancelled: unpaid rows were removed
 OPTION (MAXRECURSION 600);
 
-/* ---------------------------------------------------------------- 6. CLAIMS (one in every status)
-   Listed oldest first so claim numbers increase over time. Incident dates fall inside each coverage period. */
+/*
+6. CLAIMS (one in every status)
+Listed oldest first so claim numbers increase over time. 
+Incident dates fall inside each coverage period. 
+*/
 CREATE TABLE #ClaimSpec (
     Id               INT IDENTITY(1,1) PRIMARY KEY,
     Email            NVARCHAR(256),
@@ -223,7 +241,7 @@ DROP TABLE #Spec;
 
 COMMIT TRANSACTION;
 
-/* ---------------------------------------------------------------- Check the result */
+/* Check results */
 SELECT u.FullName, e.PolicyName, e.Status, e.PaymentsPaid, e.PaymentsTotal, e.OverdueCount, e.NextDueDate, e.MonthlyPremium
 FROM dbo.vw_EnrollmentDetails e
 JOIN dbo.Users u ON u.UserId = e.UserId
