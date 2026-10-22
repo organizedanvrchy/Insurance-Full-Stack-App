@@ -1,0 +1,94 @@
+:host {
+  display: block;
+}
+
+.panel {
+  position: relative;
+  overflow: hidden;
+  min-height: 100vh;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  padding: 3rem clamp(2rem, 6vw, 5rem);
+  background: linear-gradient(155deg, var(--hero-from), var(--hero-to));
+  color: var(--hero-text);
+
+  /*
+  recolor the logo for the dark gradient
+  */
+  --logo-mark: var(--hero-text);
+  --logo-text: var(--hero-text);
+  --logo-accent: var(--hero-text-soft);
+}
+
+.content {
+  position: relative;
+  z-index: 1;
+  max-width: 30rem;
+  display: grid;
+  gap: 1.5rem;
+}
+
+.slogan {
+  margin: 0;
+  font-size: clamp(1.6rem, 2.6vw, 2.2rem);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.sub {
+  margin: 0;
+  color: var(--hero-text-soft);
+  line-height: 1.6;
+}
+
+.points {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.points li {
+  position: relative;
+  padding-left: 1.9rem;
+  line-height: 1.45;
+}
+
+.points li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: var(--hero-text-soft);
+  font-weight: 700;
+}
+
+/* Falling rain */
+.rain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.drop {
+  position: absolute;
+  top: -12%;
+  width: 2px;
+  height: 46px;
+  border-radius: 2px;
+  background: linear-gradient(to bottom, transparent, var(--hero-drop));
+  animation: fall linear infinite;
+}
+
+@keyframes fall {
+  to {
+    transform: translateY(125vh);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rain {
+    display: none;
+  }
+}

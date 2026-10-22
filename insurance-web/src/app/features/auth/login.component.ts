@@ -3,12 +3,20 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { getErrorMessage } from '../../core/utils/http-error';
+import { AuthBrandPanelComponent } from '../../shared/components/auth-brand-panel.component';
+import { BrandLogoComponent } from '../../shared/components/brand-logo.component';
 import { ThemeToggleComponent } from '../../shared/components/theme-toggle.component';
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule, RouterLink, ThemeToggleComponent],
-  templateUrl: "login.html",
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    ThemeToggleComponent,
+    AuthBrandPanelComponent,
+    BrandLogoComponent,
+  ],
+  templateUrl: './login.html',
   styleUrl: '../../shared/styles/centered-card.css',
 })
 export class LoginComponent {

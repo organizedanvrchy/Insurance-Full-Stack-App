@@ -1,4 +1,7 @@
-/* Centered single-card layout, shared by login, register and not-found. */
+/*
+Centered single-card layout, shared
+by login, register and not-found.
+*/
 
 .auth-page {
   min-height: 100vh;
@@ -25,16 +28,62 @@
   font-size: 1.5rem;
 }
 
-/* "No account? Create one" line under the form */
+/*
+"No account? Create one" line under the form
+*/
 .alt {
   margin: 0;
   text-align: center;
   font-size: 0.9rem;
 }
 
-/* Theme toggle in the corner of the public pages (login, register, not-found) */
+/*
+Theme toggle in the corner of the public
+pages (login, register, not-found)
+*/
 .theme-corner {
   position: fixed;
   top: 1rem;
   right: 1rem;
+}
+
+/*
+Split variant (login and register):
+brand panel on the left, form on the right
+*/
+.auth-page.split {
+  padding: 0;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  place-items: stretch;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+
+/*
+The small logo shown above the form
+when the brand panel is hidden
+*/
+.auth-mobile-logo {
+  display: none;
+  margin-bottom: 1.25rem;
+}
+
+@media (max-width: 860px) {
+  .auth-page.split {
+    grid-template-columns: 1fr;
+  }
+
+  app-auth-brand-panel {
+    display: none;
+  }
+
+  .auth-mobile-logo {
+    display: inline-flex;
+  }
 }

@@ -128,6 +128,16 @@ and dark swatches dk-. Currently, Not every swatch is used.
   --danger-border: #e3b5b0;
   --error: #c0392b;
 
+  /*
+  hero and brand surfaces
+  (dashboard banner, sign-in panel)
+  */
+  --hero-from: var(--lt-deep-space-blue);
+  --hero-to: var(--lt-yale-blue-3);
+  --hero-text: #ffffff;
+  --hero-text-soft: var(--lt-light-blue);
+  --hero-drop: color-mix(in srgb, var(--lt-light-blue) 45%, transparent);
+
   /* elevation */
   --shadow-card: 0 4px 24px color-mix(in srgb, var(--lt-deep-space-blue) 12%, transparent);
 }
@@ -186,6 +196,15 @@ and dark swatches dk-. Currently, Not every swatch is used.
   --danger: #ff8f80;
   --danger-border: #7a2f27;
   --error: #ff8f80;
+
+  /*
+  hero and brand surfaces
+  */
+  --hero-from: var(--dk-ink-black-4);
+  --hero-to: var(--dk-deep-space-blue-4);
+  --hero-text: var(--dk-text);
+  --hero-text-soft: var(--lt-sky-blue-light);
+  --hero-drop: color-mix(in srgb, var(--lt-steel-blue) 40%, transparent);
 
   /* elevation */
   --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.55);
@@ -254,7 +273,7 @@ textarea {
 --------------------------------------------------------------------------
 */
 .page {
-  max-width: 1000px;
+  max-width: 1160px;
   margin: 0 auto;
   padding: 1.5rem 1rem 3rem;
 }
@@ -299,6 +318,12 @@ textarea {
   display: flex;
   align-items: center;
   gap: 0.4rem;
+}
+
+.lede {
+  color: var(--text-muted);
+  margin: 0 0 1.25rem;
+  max-width: 62ch;
 }
 
 /*

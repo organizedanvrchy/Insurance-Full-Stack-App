@@ -1,7 +1,23 @@
 /*
-App shell: the top navigation bar.
+App shell: top navigation bar,
+page area and footer.
 */
 
+/*
+Keep the footer at the bottom
+even on short pages
+*/
+:host {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.content {
+  flex: 1;
+}
+
+/* Navigation bar */
 .nav {
   display: flex;
   align-items: center;
@@ -13,33 +29,31 @@ App shell: the top navigation bar.
 }
 
 .brand {
-  font-weight: 700;
-  color: var(--primary);
   text-decoration: none;
 }
 
-nav {
+.nav nav {
   display: flex;
   gap: 1rem;
   flex: 1;
 }
 
-nav a {
+.nav nav a {
   color: var(--text-soft);
   text-decoration: none;
   padding: 0.25rem 0;
   border-bottom: 2px solid transparent;
 }
 
-nav a:hover {
+.nav nav a:hover {
   color: var(--primary);
 }
 
 /*
-routerLinkActive="active" adds this class
-to the current page's link
+routerLinkActive="active" adds this
+class to the current page's link
 */
-nav a.active {
+.nav nav a.active {
   color: var(--primary);
   border-bottom-color: var(--accent);
 }
@@ -49,4 +63,54 @@ nav a.active {
   align-items: center;
   gap: 0.75rem;
   font-size: 0.9rem;
+}
+
+/* Footer */
+.footer {
+  margin-top: 2rem;
+  padding: 2rem 1.5rem 1.25rem;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+.footer-inner {
+  max-width: 1160px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.footer-brand p {
+  margin: 0.6rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.footer-links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+}
+
+.footer-links a {
+  color: var(--text-soft);
+  text-decoration: none;
+}
+
+.footer-links a:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
+.fine-print {
+  max-width: 1160px;
+  margin: 1.5rem auto 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: 0.8rem;
 }

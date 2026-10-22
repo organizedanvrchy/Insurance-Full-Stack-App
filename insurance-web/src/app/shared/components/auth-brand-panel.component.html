@@ -1,0 +1,22 @@
+<aside class="panel">
+  <div class="rain" aria-hidden="true">
+    @for (d of drops; track d.left) {
+    <span class="drop" [style.left.%]="d.left" [style.animation-delay.s]="d.delay"
+      [style.animation-duration.s]="d.duration"></span>
+    }
+  </div>
+
+  <div class="content">
+    <app-brand-logo size="lg" />
+    <p class="slogan">{{ slogan }}</p>
+    <p class="sub">
+      Get a personalized quote in minutes, manage your premiums in one place and file claims
+      without the paperwork.
+    </p>
+    <ul class="points">
+      @for (p of points; track p) {
+      <li>{{ p }}</li>
+      }
+    </ul>
+  </div>
+</aside>

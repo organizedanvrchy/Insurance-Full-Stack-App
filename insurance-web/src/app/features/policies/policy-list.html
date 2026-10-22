@@ -6,16 +6,28 @@
     }
   </header>
 
+  <p class="lede">
+    @if (auth.isAdmin()) {
+    Manage the plans customers can choose from. Each plan’s monthly amount is the base rate that
+    quotes are calculated from.
+    } @else {
+    Pick a plan, answer a few questions and get a price built for you. No obligation until you enroll.
+    }
+  </p>
+
   <div class="toolbar">
-    <label>
-      Type
-      <select #typeSelect (change)="typeFilter.set(typeSelect.value)">
-        <option value="">All types</option>
-        @for (t of policyTypes; track t) {
-        <option [value]="t">{{ t }}</option>
-        }
-      </select>
-    </label>
+    <div class="chips" role="group" aria-label="Filter by policy type">
+      <button type="button" class="chip" [class.active]="typeFilter() === ''" (click)="typeFilter.set('')">
+        All
+      </button>
+      @for (t of policyTypes; track t) {
+      <button type="button" class="chip" [class.active]="typeFilter() === t" (click)="typeFilter.set(t)">
+        {{ t }}
+      </button>
+      }
+    </div>
+
+    <span class="muted">{{ filtered().length }} {{ filtered().length === 1 ? 'plan' : 'plans' }}</span>
 
     @if (auth.isAdmin()) {
     <label class="check">
@@ -31,7 +43,8 @@
 
   @if (loading()) {
   <p class="muted">Loading policies…</p>
-  } @else {
+  } @else if (auth.isAdmin()) {
+  <!-- Admin: table with management actions -->
   <div class="table-wrap">
     <table class="table">
       <thead>
@@ -39,14 +52,10 @@
           <th>Policy</th>
           <th>Type</th>
           <th class="num">Coverage</th>
-          <th class="num">Monthly</th>
+          <th class="num">From (per month)</th>
           <th class="num">Term</th>
-          @if (auth.isAdmin()) {
           <th>Status</th>
           <th><span class="sr-only">Actions</span></th>
-          } @else {
-          <th><span class="sr-only">Actions</span></th>
-          }
         </tr>
       </thead>
       <tbody>
@@ -61,8 +70,7 @@
           <td>{{ p.policyType }}</td>
           <td class="num">{{ p.coverageAmount | currency }}</td>
           <td class="num">{{ p.monthlyPremium | currency }}</td>
-          <td class="num">{{ p.termMonths }} mo</td>
-          @if (auth.isAdmin()) {
+          <td class="num">{{ termLabel(p.termMonths) }}</td>
           <td>
             <span class="badge" [class.off]="!p.isActive">
               {{ p.isActive ? 'Active' : 'Deactivated' }}
@@ -71,16 +79,9 @@
           <td class="actions">
             <a class="btn-sm" [routerLink]="['/policies', p.policyId, 'edit']">Edit</a>
             @if (p.isActive) {
-            <button class="btn-sm danger" type="button" (click)="deactivate(p)">
-              Deactivate
-            </button>
+            <button class="btn-sm danger" type="button" (click)="deactivate(p)">Deactivate</button>
             }
           </td>
-          } @else {
-          <td class="actions">
-            <a class="btn-sm primary" [routerLink]="['/policies', p.policyId, 'enroll']">Enroll</a>
-          </td>
-          }
         </tr>
         } @empty {
         <tr>
@@ -89,6 +90,39 @@
         }
       </tbody>
     </table>
+  </div>
+  } @else {
+  <!-- Customer: plan cards -->
+  <div class="catalog">
+    @for (p of filtered(); track p.policyId) {
+    <article class="plan">
+      <header class="plan-head">
+        <span class="badge info">{{ p.policyType }}</span>
+        <span class="muted">{{ termLabel(p.termMonths) }}</span>
+      </header>
+
+      <h2 class="plan-name">{{ p.policyName }}</h2>
+      @if (p.description) {
+      <p class="plan-desc">{{ p.description }}</p>
+      }
+
+      <p class="plan-coverage">
+        <span class="muted">Coverage up to</span>
+        <strong>{{ p.coverageAmount | currency: 'USD' : 'symbol' : '1.0-0' }}</strong>
+      </p>
+
+      <footer class="plan-foot">
+        <p class="plan-price">
+          <span class="muted">From</span>
+          <strong>{{ p.monthlyPremium | currency }}</strong>
+          <span class="muted">/ month</span>
+        </p>
+        <a class="btn-sm primary" [routerLink]="['/policies', p.policyId, 'enroll']">Get a quote</a>
+      </footer>
+    </article>
+    } @empty {
+    <p class="muted">No plans match this filter.</p>
+    }
   </div>
   }
 </section>

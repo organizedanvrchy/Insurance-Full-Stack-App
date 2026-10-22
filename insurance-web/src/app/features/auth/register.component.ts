@@ -11,14 +11,15 @@ import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { getErrorMessage } from '../../core/utils/http-error';
 import { ThemeToggleComponent } from '../../shared/components/theme-toggle.component';
+import { AuthBrandPanelComponent } from '../../shared/components/auth-brand-panel.component';
+import { BrandLogoComponent } from '../../shared/components/brand-logo.component';
 
 const passwordsMatch: ValidatorFn = (g: AbstractControl): ValidationErrors | null =>
   g.get('password')?.value === g.get('confirmPassword')?.value ? null : { mismatch: true };
 
 @Component({
   selector: 'app-register',
-  imports: [ReactiveFormsModule, RouterLink, ThemeToggleComponent],
-  templateUrl: "register.html",
+  imports: [ReactiveFormsModule, RouterLink, ThemeToggleComponent, AuthBrandPanelComponent, BrandLogoComponent],  templateUrl: "register.html",
   styleUrl: '../../shared/styles/centered-card.css',
 })
 export class RegisterComponent {

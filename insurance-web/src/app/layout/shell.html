@@ -1,5 +1,5 @@
 <header class="nav">
-  <a class="brand" routerLink="/dashboard">Insurance Portal</a>
+  <a class="brand" routerLink="/dashboard"><app-brand-logo /></a>
   <nav aria-label="Main">
     <a routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
     <a routerLink="/policies" routerLinkActive="active">Policies</a>
@@ -17,4 +17,30 @@
     <button class="btn-sm" type="button" (click)="auth.logout()">Log out</button>
   </div>
 </header>
-<router-outlet />
+
+<main class="content">
+  <router-outlet />
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <app-brand-logo />
+      <p>{{ tagline }}</p>
+    </div>
+
+    <nav class="footer-links" aria-label="Footer">
+      <a routerLink="/policies">Browse policies</a>
+      @if (auth.isAdmin()) {
+      <a routerLink="/admin/claims">Claims review</a>
+      <a routerLink="/admin/customers">Customers</a>
+      } @else {
+      <a routerLink="/my-policies">My policies</a>
+      <a routerLink="/claims">My claims</a>
+      }
+    </nav>
+  </div>
+  <p class="fine-print">
+    © {{ year }} {{ name }}. A fictional brand created for a portfolio project, not a real insurer.
+  </p>
+</footer>

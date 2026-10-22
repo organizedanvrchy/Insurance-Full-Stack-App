@@ -1,32 +1,39 @@
-<main class="auth-page">
+<main class="auth-page split">
   <app-theme-toggle class="theme-corner" />
-  <form class="card" [formGroup]="form" (ngSubmit)="submit()" novalidate>
-    <h1>Sign in</h1>
+  <app-auth-brand-panel />
 
-    @if (error()) {
-    <div class="alert" role="alert">{{ error() }}</div>
-    }
+  <section class="auth-form">
+    <app-brand-logo class="auth-mobile-logo" />
 
-    <label class="field">
-      Email
-      <input type="email" formControlName="email" autocomplete="email" />
-      @if (f.email.touched && f.email.invalid) {
-      <small class="err">Enter a valid email address.</small>
+    <form class="card" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <h1>Welcome back</h1>
+      <p class="muted">Sign in to manage your policies and claims.</p>
+
+      @if (error()) {
+      <div class="alert" role="alert">{{ error() }}</div>
       }
-    </label>
 
-    <label class="field">
-      Password
-      <input type="password" formControlName="password" autocomplete="current-password" />
-      @if (f.password.touched && f.password.invalid) {
-      <small class="err">Password is required.</small>
-      }
-    </label>
+      <label class="field">
+        Email
+        <input type="email" formControlName="email" autocomplete="email" />
+        @if (f.email.touched && f.email.invalid) {
+        <small class="err">Enter a valid email address.</small>
+        }
+      </label>
 
-    <button class="btn" type="submit" [disabled]="loading()">
-      {{ loading() ? 'Signing in…' : 'Sign in' }}
-    </button>
+      <label class="field">
+        Password
+        <input type="password" formControlName="password" autocomplete="current-password" />
+        @if (f.password.touched && f.password.invalid) {
+        <small class="err">Password is required.</small>
+        }
+      </label>
 
-    <p class="alt">No account? <a routerLink="/register">Create one</a></p>
-  </form>
+      <button class="btn" type="submit" [disabled]="loading()">
+        {{ loading() ? 'Signing in…' : 'Sign in' }}
+      </button>
+
+      <p class="alt">No account? <a routerLink="/register">Create one</a></p>
+    </form>
+  </section>
 </main>

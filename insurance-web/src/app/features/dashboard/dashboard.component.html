@@ -1,0 +1,204 @@
+<section class="page">
+  <header class="hero">
+    <div class="hero-text">
+      <p class="eyebrow">{{ greeting }}</p>
+      <h1>Welcome back, {{ firstName() }}</h1>
+      <p class="slogan">{{ slogan }}</p>
+    </div>
+    <div class="hero-actions">
+      @if (auth.isAdmin()) {
+      <a class="hero-btn" routerLink="/admin/claims">Review claims</a>
+      <a class="hero-link" routerLink="/admin/customers">Manage customers</a>
+      } @else {
+      <a class="hero-btn" routerLink="/policies">Get a quote</a>
+      <a class="hero-link" routerLink="/my-policies">View my policies</a>
+      }
+    </div>
+  </header>
+
+  @if (error()) {
+  <div class="notice" role="status">
+    We couldn’t load your overview right now, but everything else still works. ({{ error() }})
+  </div>
+  }
+
+  @if (loading()) {
+  <p class="muted loading">Loading your overview…</p>
+  } @else if (!error()) {
+  @if (auth.isAdmin()) {
+  <!-- ================= ADMIN OVERVIEW ================= -->
+  <div class="stats">
+    <div class="stat">
+      <span class="stat-label">Awaiting review</span>
+      <strong class="stat-value">{{ countOf('Submitted') }}</strong>
+      <span class="stat-hint">New claims to pick up</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">In review</span>
+      <strong class="stat-value">{{ countOf('UnderReview') }}</strong>
+      <span class="stat-hint">Being worked on</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Approved, to pay</span>
+      <strong class="stat-value">{{ countOf('Approved') }}</strong>
+      <span class="stat-hint">Ready to be marked as paid</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Active customers</span>
+      <strong class="stat-value">{{ activeCustomers() }}</strong>
+      <span class="stat-hint">of {{ customers().length }} registered</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Plans on offer</span>
+      <strong class="stat-value">{{ plans().length }}</strong>
+      <span class="stat-hint">Active plans in the catalog</span>
+    </div>
+  </div>
+
+  <div class="panels">
+    <section class="panel">
+      <h2>Claims waiting for review</h2>
+      @for (c of queue(); track c.claimId) {
+      <a class="row" routerLink="/admin/claims">
+        <span class="row-main">
+          <strong>{{ c.claimNumber }} · {{ c.customerName }}</strong>
+          <span class="muted">
+            {{ c.policyName }} · {{ c.claimAmount | currency }} · submitted {{ c.submittedAt | date: 'MMM d' }}
+          </span>
+        </span>
+        <span class="row-action">Review</span>
+      </a>
+      } @empty {
+      <p class="clear">
+        <strong>Clear skies.</strong>
+        <span class="muted">Every submitted claim has been picked up.</span>
+      </p>
+      }
+    </section>
+
+    <section class="panel">
+      <h2>Claims by status</h2>
+      @for (s of statusCounts(); track s.status) {
+      <div class="row static">
+        <span [class]="'badge ' + badgeClass(s.status)">{{ label(s.status) }}</span>
+        <strong>{{ s.count }}</strong>
+      </div>
+      }
+    </section>
+  </div>
+  } @else {
+  <!-- ================= CUSTOMER OVERVIEW ================= -->
+  <div class="stats">
+    <div class="stat">
+      <span class="stat-label">Active policies</span>
+      <strong class="stat-value">{{ activeEnrollments().length }}</strong>
+      <span class="stat-hint">{{ enrollments().length }} in total</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Monthly premiums</span>
+      <strong class="stat-value">{{ monthlyTotal() | currency }}</strong>
+      <span class="stat-hint">Across your active policies</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Next payment</span>
+      @if (nextPayment(); as np) {
+      <strong class="stat-value">{{ np.nextDueDate | date: 'MMM d' }}</strong>
+      <span class="stat-hint">{{ np.nextDueAmount | currency }} · {{ np.policyName }}</span>
+      } @else {
+      <strong class="stat-value">All paid up</strong>
+      <span class="stat-hint">No payments waiting</span>
+      }
+    </div>
+    <div class="stat">
+      <span class="stat-label">Open claims</span>
+      <strong class="stat-value">{{ openClaims() }}</strong>
+      <span class="stat-hint">Submitted or under review</span>
+    </div>
+  </div>
+
+  <div class="panels">
+    <section class="panel">
+      <h2>Needs your attention</h2>
+      @for (e of overdue(); track e.enrollmentId) {
+      <a class="row danger" [routerLink]="['/my-policies', e.enrollmentId, 'payments']">
+        <span class="row-main">
+          <strong>Payment overdue</strong>
+          <span class="muted">
+            {{ e.policyName }} · {{ e.overdueCount }} past due. Claims are blocked until it’s paid.
+          </span>
+        </span>
+        <span class="row-action">Pay now</span>
+      </a>
+      }
+      @for (e of dueSoon(); track e.enrollmentId) {
+      <a class="row warning" [routerLink]="['/my-policies', e.enrollmentId, 'payments']">
+        <span class="row-main">
+          <strong>Payment due soon</strong>
+          <span class="muted">
+            {{ e.policyName }} · {{ e.nextDueAmount | currency }} due {{ e.nextDueDate | date: 'MMM d' }}
+          </span>
+        </span>
+        <span class="row-action">Pay</span>
+      </a>
+      }
+      @if (overdue().length === 0 && dueSoon().length === 0) {
+      <p class="clear">
+        <strong>Clear skies.</strong>
+        <span class="muted">No payments due and nothing waiting on you.</span>
+      </p>
+      }
+    </section>
+
+    <section class="panel">
+      <h2>Recent claim updates</h2>
+      @for (c of claimUpdates(); track c.claimId) {
+      <a class="row" routerLink="/claims">
+        <span class="row-main">
+          <strong>{{ c.claimNumber }} · {{ c.policyName }}</strong>
+          <span class="muted">
+            {{ c.claimAmount | currency }}
+            @if (c.adminNotes) {
+            · {{ c.adminNotes }}
+            }
+          </span>
+        </span>
+        <span [class]="'badge ' + badgeClass(c.status)">{{ label(c.status) }}</span>
+      </a>
+      } @empty {
+      <p class="muted">
+        No claim updates yet. If something happens, you can file a claim from
+        <a routerLink="/my-policies">My policies</a>.
+      </p>
+      }
+    </section>
+  </div>
+  }
+  }
+
+  <h2 class="section-title">Quick actions</h2>
+  <div class="tiles">
+    <a class="tile" routerLink="/policies">
+      <strong>Browse policies</strong>
+      <span>See coverage options and monthly premiums.</span>
+    </a>
+    @if (auth.isAdmin()) {
+    <a class="tile" routerLink="/admin/claims">
+      <strong>Review claims</strong>
+      <span>Work through submitted claims.</span>
+    </a>
+    <a class="tile" routerLink="/admin/customers">
+      <strong>Customers</strong>
+      <span>Search customers and manage account access.</span>
+    </a>
+    } @else {
+    <a class="tile" routerLink="/my-policies">
+      <strong>My policies</strong>
+      <span>Your coverage and premium progress.</span>
+    </a>
+    <a class="tile" routerLink="/claims">
+      <strong>My claims</strong>
+      <span>Track the status of your claims.</span>
+    </a>
+    }
+  </div>
+</section>
