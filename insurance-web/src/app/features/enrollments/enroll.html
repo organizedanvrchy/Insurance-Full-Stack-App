@@ -25,7 +25,7 @@
 
   @if (quote(); as qt) {
   <!-- STAGE 2: the quote -->
-  <div class="form" style="margin-top: 1rem">
+  <div class="form stage">
     <h2 class="summary-title">Your personalized quote</h2>
     <p class="price">{{ qt.monthlyPremium | currency }} <span class="muted">per month</span></p>
 
@@ -74,7 +74,7 @@
   </div>
   } @else {
   <!-- STAGE 1: the questionnaire (built from the API's question list) -->
-  <form class="form" style="margin-top: 1rem" [formGroup]="form()" (ngSubmit)="getQuote(p)" novalidate>
+  <form class="form stage" [formGroup]="form()" (ngSubmit)="getQuote(p)" novalidate>
     <h2 class="summary-title">Tell us a bit about you</h2>
     <p class="muted">We use your answers to calculate your price.</p>
 
