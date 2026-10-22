@@ -1,14 +1,13 @@
 using System.Security.Claims;
 using InsuranceApi.DTOs;
-using InsuranceApi.Exceptions;
 using InsuranceApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace InsuranceApi.Controllers;
 
-[ApiController]                      // gives automatic 400 responses when DTO validation fails
-[Route("api/[controller]")]          // -> /api/auth
+[ApiController]                      // Automatic 400 responses when DTO validation fails
+[Route("api/[controller]")]          // /api/auth
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _auth;
@@ -20,15 +19,10 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<AuthResponse>> Register(RegisterRequest request)
     {
-        try
-        {
-            var result = await _auth.RegisterAsync(request);
-            return CreatedAtAction(nameof(Me), result);
-        }
-        catch (DuplicateEmailException)
-        {
-            return Conflict(new ProblemDetails { Title = "That email is already registered.", Status = 409 });
-        }
+        // Duplicate email throws DuplicateEmailException, 
+        // which ApiExceptionHandler turns into a 409.
+        var result = await _auth.RegisterAsync(request);
+        return CreatedAtAction(nameof(Me), result);
     }
 
     [HttpPost("login")]
