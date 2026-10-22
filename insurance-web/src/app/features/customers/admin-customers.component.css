@@ -1,0 +1,12 @@
+/*
+Admin customers: the search box that
+sits in the shared toolbar.
+*/
+
+.toolbar input[type='search'] {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  min-width: 240px;
+  margin-left: 0.5rem;
+}

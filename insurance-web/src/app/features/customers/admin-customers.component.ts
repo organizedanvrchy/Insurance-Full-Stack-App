@@ -10,6 +10,7 @@ type StatusFilter = '' | 'active' | 'inactive';
   selector: 'app-admin-customers',
   imports: [DatePipe],
   templateUrl: "admin-customers.html",
+  styleUrl: "admin-customers.component.css",
 })
 export class AdminCustomersComponent {
   private api = inject(CustomerService);
