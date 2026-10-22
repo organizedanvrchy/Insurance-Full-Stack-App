@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using InsuranceApi.DTOs;
 using InsuranceApi.Enums;
-using InsuranceApi.Exceptions;
 using InsuranceApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,12 +10,13 @@ namespace InsuranceApi.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class EnrollmentsController: ControllerBase
+public class EnrollmentsController : ControllerBase
 {
     private readonly IEnrollmentService _enrollments;
     public EnrollmentsController(IEnrollmentService enrollments) => _enrollments = enrollments;
 
-    // Caller Id from validated token
+    // Caller's ID comes from the validated token, 
+    // not from the request body or URL.
     private int CurrentUserId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     [HttpGet("mine")]
@@ -27,41 +27,33 @@ public class EnrollmentsController: ControllerBase
     }
 
     [HttpGet("{id:int}")]
+    [ProducesResponseType(typeof(EnrollmentDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<EnrollmentDto>> GetById(int id)
     {
         var dto = await _enrollments.GetByIdAsync(id, CurrentUserId, User.IsInRole(nameof(UserRole.Admin)));
-        if(dto is null) return NotFound();
+        if (dto is null) return NotFound();
         return Ok(dto);
     }
 
+    // Errors (400 bad date/expired quote, 404 quote not found, 
+    // 409 duplicate/quote already used)
+    // are translated by ApiExceptionHandler.
     [HttpPost]
-    [Authorize(Roles = nameof(UserRole.Customer))]
+    [Authorize(Roles = nameof(UserRole.Customer))]      // Only Customers buy policies
     [ProducesResponseType(typeof(EnrollmentDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<EnrollmentDto>> Enroll(EnrollmentRequest request)
     {
-        try
-        {
-            var dto = await _enrollments.EnrollAsync(CurrentUserId, request);
-            return CreatedAtAction(nameof(GetById), new { id = dto.EnrollmentId }, dto);
-        }
-        catch (BusinessRuleException ex)
-        {
-            return BadRequest(new ProblemDetails {Title = ex.Message, Status = 400});
-        }
-        catch (PolicyNotAvailableException ex)
-        {
-            return NotFound(new ProblemDetails {Title = ex.Message, Status = 404});
-        }
-        catch (DuplicateEnrollmentException ex)
-        {
-            return Conflict(new ProblemDetails {Title = ex.Message, Status = 409});
-        }
+        var dto = await _enrollments.EnrollAsync(CurrentUserId, request);
+        return CreatedAtAction(nameof(GetById), new { id = dto.EnrollmentId }, dto);
     }
 
     [HttpPut("{id:int}/cancel")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Cancel(int id)
     {
         var cancelled = await _enrollments.CancelAsync(id, CurrentUserId);
