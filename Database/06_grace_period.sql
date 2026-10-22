@@ -1,6 +1,3 @@
-USE InsuranceDb;
-GO
-
 /* An installment is Overdue only once it is MORE than 5 days past its due date.
    To change the grace period, change the 5 here and nowhere else. */
 CREATE OR ALTER VIEW dbo.vw_PaymentDetails

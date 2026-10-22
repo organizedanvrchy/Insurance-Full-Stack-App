@@ -1,6 +1,3 @@
-USE InsuranceDb;
-GO
-
 IF OBJECT_ID('dbo.Quotes', 'U') IS NULL
 BEGIN
     CREATE TABLE dbo.Quotes (

@@ -1,6 +1,3 @@
-USE InsuranceDb;
-GO
-
 /* =====================  USERS (auth)  ===================== */
 
 CREATE OR ALTER PROCEDURE dbo.usp_User_Register

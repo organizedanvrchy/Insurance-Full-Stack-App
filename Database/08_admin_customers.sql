@@ -1,6 +1,3 @@
-USE InsuranceDb;
-GO
-
 /* One row per customer, with the counts an admin cares about. Admin accounts never appear here. */
 CREATE OR ALTER VIEW dbo.vw_CustomerSummary
 AS

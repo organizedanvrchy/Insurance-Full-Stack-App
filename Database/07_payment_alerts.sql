@@ -1,6 +1,3 @@
-USE InsuranceDb;
-GO
-
 /* Same view as before, plus: OverdueCount, NextDueDate, NextDueAmount.
    Overdue comes from vw_PaymentDetails, the single source of truth (including the grace period). */
 CREATE OR ALTER VIEW dbo.vw_EnrollmentDetails

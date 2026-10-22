@@ -1,9 +1,3 @@
--- Run once on a fresh server. Order matters because of foreign keys.
-IF DB_ID('InsuranceDb') IS NULL CREATE DATABASE InsuranceDb;
-GO
-USE InsuranceDb;
-GO
-
 CREATE TABLE dbo.Users (
     UserId       INT IDENTITY(1,1) CONSTRAINT PK_Users PRIMARY KEY,
     FullName     NVARCHAR(100) NOT NULL,
@@ -79,6 +73,3 @@ CREATE TABLE dbo.Claims (
 );
 CREATE INDEX IX_Claims_EnrollmentId ON dbo.Claims(EnrollmentId);
 GO
-
--- Making your first admin: register normally through the app, then run:
--- UPDATE dbo.Users SET Role = 'Admin' WHERE Email = 'you@example.com';

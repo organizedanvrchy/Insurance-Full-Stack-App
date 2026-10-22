@@ -1,6 +1,3 @@
-USE InsuranceDb;
-GO
-
 /* Claim numbers come from a SEQUENCE: a counter owned by the database. Rolled-back inserts can leave gaps; that's normal. */
 IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = 'ClaimNumberSeq')
     CREATE SEQUENCE dbo.ClaimNumberSeq AS BIGINT START WITH 1 INCREMENT BY 1;

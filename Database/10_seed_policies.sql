@@ -1,6 +1,3 @@
-USE InsuranceDb;
-GO
-
 /* Demo catalog: 4 plans per policy type (20 total).
    MonthlyPremium = BASE monthly rate. The customer's quote multiplies it by their rating factors.
    Safe to re-run: a plan is inserted only if no plan with the same name already exists. */

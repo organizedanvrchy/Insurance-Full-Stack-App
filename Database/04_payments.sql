@@ -1,6 +1,3 @@
-USE InsuranceDb;
-GO
-
 /* Overdue is derived on read, so no job ever has to update it.
    We join Enrollments so the view carries UserId, which makes ownership checks easy. */
 CREATE OR ALTER VIEW dbo.vw_PaymentDetails

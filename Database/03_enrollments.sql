@@ -1,6 +1,3 @@
-USE InsuranceDb;
-GO
-
 /* A VIEW is a saved SELECT. Both read procs share it, so the join and the "derived Expired" rule live in one place. */
 CREATE OR ALTER VIEW dbo.vw_EnrollmentDetails
 AS
