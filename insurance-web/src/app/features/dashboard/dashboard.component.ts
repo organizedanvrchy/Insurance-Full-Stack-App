@@ -5,7 +5,8 @@ import { AuthService } from '../../core/services/auth.service';
 @Component({
   selector: 'app-dashboard',
   imports: [RouterLink],
-  templateUrl: "dashboard.html"
+  templateUrl: "dashboard.html",
+  styleUrl: "dashboard.component.css",
 })
 export class DashboardComponent {
   auth = inject(AuthService);

@@ -1,0 +1,48 @@
+/*
+App shell: the top navigation bar.
+*/
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.brand {
+  font-weight: 700;
+  color: var(--text);
+  text-decoration: none;
+}
+
+nav {
+  display: flex;
+  gap: 1rem;
+  flex: 1;
+}
+
+nav a {
+  color: var(--text-soft);
+  text-decoration: none;
+  padding: 0.25rem 0;
+  border-bottom: 2px solid transparent;
+}
+
+/*
+routerLinkActive="active" adds this
+class to the current page's link
+*/
+nav a.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.who {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+}

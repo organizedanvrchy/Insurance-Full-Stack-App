@@ -1,0 +1,37 @@
+/*
+Centered single-card layout,
+shared by login, register and not-found.
+*/
+
+.auth-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface);
+  padding: 2rem;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.card h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+/*
+"No account? Create one" line under the form
+*/
+.alt {
+  margin: 0;
+  text-align: center;
+  font-size: 0.9rem;
+}
