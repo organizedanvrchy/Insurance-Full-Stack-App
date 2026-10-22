@@ -12,6 +12,7 @@ import { Payment } from '../../core/models/payment/payment';
   selector: 'app-payment-schedule',
   imports: [RouterLink, CurrencyPipe, DatePipe],
   templateUrl: "payment-schedule.html",
+  styleUrl: "payment-schedule.component.css",
 })
 export class PaymentScheduleComponent {
   private route = inject(ActivatedRoute);

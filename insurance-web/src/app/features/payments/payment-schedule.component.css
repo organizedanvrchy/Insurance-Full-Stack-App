@@ -1,0 +1,8 @@
+/*
+Payment schedule: space between the summary
+card and the installments table.
+*/
+
+.schedule {
+  margin-top: 1rem;
+}
