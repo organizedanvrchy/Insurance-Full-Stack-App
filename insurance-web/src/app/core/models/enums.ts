@@ -1,0 +1,24 @@
+// Keep in sync with Api/Enums/*.cs and the SQL CHECK constraints.
+export const USER_ROLES = ['Customer', 'Admin'] as const;
+export type UserRole = (typeof USER_ROLES)[number];
+
+export const POLICY_TYPES = ['Health', 'Auto', 'Life', 'Home', 'Travel'] as const;
+export type PolicyType = (typeof POLICY_TYPES)[number];
+
+export const ENROLLMENT_STATUSES = ['Active', 'Cancelled', 'Expired'] as const;
+export type EnrollmentStatus = (typeof ENROLLMENT_STATUSES)[number];
+
+export const PAYMENT_STATUSES = ['Pending', 'Paid', 'Overdue'] as const;
+export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
+
+export const CLAIM_STATUSES = ['Submitted', 'UnderReview', 'Approved', 'Rejected', 'Paid'] as const;
+export type ClaimStatus = (typeof CLAIM_STATUSES)[number];
+
+// Computed by the API (not stored in the database):
+// what a customer needs to do about premiums.
+export const PAYMENT_ALERTS = ['None', 'DueSoon', 'Overdue'] as const;
+export type PaymentAlert = (typeof PAYMENT_ALERTS)[number];
+
+// Quote Enums
+export type QuestionType = 'Number' | 'Boolean' | 'Date' | 'Choice';
+export type AnswerValue = string | number | boolean;
