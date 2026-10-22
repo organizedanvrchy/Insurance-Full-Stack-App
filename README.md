@@ -8,7 +8,7 @@ A full-stack insurance platform. Customers get **personalized quotes**, enroll i
 ![Azure](https://img.shields.io/badge/Hosted%20on-Azure-0078D4?logo=microsoftazure&logoColor=white)
 ![Tests](https://img.shields.io/badge/tests-xUnit-5E2D79)
 
-> **Live demo:** [https://YOUR-FRONTEND.azurewebsites.net](https://YOUR-FRONTEND.azurewebsites.net)
+> **Live demo:** [Project Website](https://projectdeploy-ewbahrbra0abcuam.westus3-01.azurewebsites.net/)
 > *(Hosted on a development-tier Azure plan, so the first request after a quiet period may take a few seconds.)*
 > Demo logins are listed under [Demo accounts](#demo-accounts).
 
