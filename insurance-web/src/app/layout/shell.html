@@ -13,6 +13,7 @@
   </nav>
   <div class="who">
     <span>{{ auth.user()?.fullName }}</span>
+    <app-theme-toggle />
     <button class="btn-sm" type="button" (click)="auth.logout()">Log out</button>
   </div>
 </header>

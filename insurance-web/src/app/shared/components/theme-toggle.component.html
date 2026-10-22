@@ -1,0 +1,4 @@
+<button class="btn-sm" type="button" (click)="theme.toggle()"
+  [attr.aria-label]="theme.theme() === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'">
+  {{ theme.theme() === 'dark' ? 'Light mode' : 'Dark mode' }}
+</button>

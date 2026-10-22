@@ -37,3 +37,12 @@ line under the form
   text-align: center;
   font-size: 0.9rem;
 }
+
+/* Theme toggle in the corner
+of the public pages (login, register, not-found)
+*/
+.theme-corner {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+}

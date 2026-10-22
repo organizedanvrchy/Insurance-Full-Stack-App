@@ -3,10 +3,11 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { getErrorMessage } from '../../core/utils/http-error';
+import { ThemeToggleComponent } from '../../shared/components/theme-toggle.component';
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, ThemeToggleComponent],
   templateUrl: "login.html"
 })
 export class LoginComponent {
