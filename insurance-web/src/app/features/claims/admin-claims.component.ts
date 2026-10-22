@@ -10,6 +10,7 @@ import { Claim } from '../../core/models/claim/claim';
   selector: 'app-admin-claims',
   imports: [CurrencyPipe, DatePipe],
   templateUrl: "admin-claims.html",
+  styleUrl: "admin-claims.component.css",
 })
 export class AdminClaimsComponent {
   private api = inject(ClaimService);

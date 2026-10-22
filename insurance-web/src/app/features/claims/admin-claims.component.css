@@ -1,0 +1,21 @@
+/*
+Admin claims review: the open-claim
+panel and the selected table row.
+*/
+
+.review-panel {
+  margin-bottom: 1rem;
+}
+
+/*
+The customer's description, keeping
+their line breaks
+*/
+.pre {
+  white-space: pre-wrap;
+  margin: 0.25rem 0 0;
+}
+
+tr.selected td {
+  background: var(--primary-tint);
+}
