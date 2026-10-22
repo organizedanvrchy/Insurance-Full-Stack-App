@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Security.Claims;
 using InsuranceApi.Data;
 using InsuranceApi.Rating;
 using InsuranceApi.Repositories;
@@ -81,17 +82,43 @@ builder.Services
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
             ClockSkew = TimeSpan.FromMinutes(1)
         };
+
+        // Account must still exist, be active, and have the same role.
+        // Deactivating a customer takes effect immediately, 
+        // instead of when their token expires. -- This may be costly when scaling up
+        o.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async ctx =>
+            {
+                var idClaim = ctx.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (!int.TryParse(idClaim, out var userId))
+                {
+                    ctx.Fail("Invalid token.");
+                    return;
+                }
+
+                var users = ctx.HttpContext.RequestServices.GetRequiredService<IUserRepository>();
+                var user = await users.GetByIdAsync(userId);
+
+                if (user is null || !user.IsActive)
+                    ctx.Fail("Account is inactive.");
+                else if (!ctx.Principal!.IsInRole(user.Role.ToString()))
+                    ctx.Fail("Role has changed. Please sign in again.");
+            }
+        };
     });
 builder.Services.AddAuthorization();
 
-// ---- CORS ----
-var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-              ?? new[] { "http://localhost:4200" };
-
-builder.Services.AddCors(o => o.AddPolicy("Angular", p =>
-    p.WithOrigins(origins)
-     .AllowAnyHeader()
-     .AllowAnyMethod())
+// CORS: Allowed Frontend that can call this API
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins")
+                                          .Get<string[]>() ?? Array
+                                          .Empty<string>();
+builder.Services.AddCors(o => 
+    o.AddPolicy("Angular", p =>
+        p.WithOrigins(allowedOrigins)
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+    )
 );
 
 var app = builder.Build();
