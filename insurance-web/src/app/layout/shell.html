@@ -1,0 +1,19 @@
+<header class="nav">
+  <a class="brand" routerLink="/dashboard">Insurance Portal</a>
+  <nav aria-label="Main">
+    <a routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
+    <a routerLink="/policies" routerLinkActive="active">Policies</a>
+    @if (auth.isAdmin()) {
+    <a routerLink="/admin/claims" routerLinkActive="active">Claims</a>
+    <a routerLink="/admin/customers" routerLinkActive="active">Customers</a>
+    } @else {
+    <a routerLink="/my-policies" routerLinkActive="active">My policies</a>
+    <a routerLink="/claims" routerLinkActive="active">My claims</a>
+    }
+  </nav>
+  <div class="who">
+    <span>{{ auth.user()?.fullName }}</span>
+    <button class="btn-sm" type="button" (click)="auth.logout()">Log out</button>
+  </div>
+</header>
+<router-outlet />
