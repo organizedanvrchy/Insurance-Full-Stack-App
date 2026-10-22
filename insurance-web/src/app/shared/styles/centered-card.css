@@ -1,7 +1,4 @@
-/*
-Centered single-card layout,
-shared by login, register and not-found.
-*/
+/* Centered single-card layout, shared by login, register and not-found. */
 
 .auth-page {
   min-height: 100vh;
@@ -28,19 +25,14 @@ shared by login, register and not-found.
   font-size: 1.5rem;
 }
 
-/*
-"No account? Create one"
-line under the form
-*/
+/* "No account? Create one" line under the form */
 .alt {
   margin: 0;
   text-align: center;
   font-size: 0.9rem;
 }
 
-/* Theme toggle in the corner
-of the public pages (login, register, not-found)
-*/
+/* Theme toggle in the corner of the public pages (login, register, not-found) */
 .theme-corner {
   position: fixed;
   top: 1rem;

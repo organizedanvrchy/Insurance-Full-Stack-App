@@ -8,7 +8,8 @@ import { ThemeToggleComponent } from '../../shared/components/theme-toggle.compo
 @Component({
   selector: 'app-login',
   imports: [ReactiveFormsModule, RouterLink, ThemeToggleComponent],
-  templateUrl: "login.html"
+  templateUrl: "login.html",
+  styleUrl: '../../shared/styles/centered-card.css',
 })
 export class LoginComponent {
   private fb = inject(FormBuilder);

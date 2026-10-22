@@ -18,7 +18,8 @@ const passwordsMatch: ValidatorFn = (g: AbstractControl): ValidationErrors | nul
 @Component({
   selector: 'app-register',
   imports: [ReactiveFormsModule, RouterLink, ThemeToggleComponent],
-  templateUrl: "register.html"
+  templateUrl: "register.html",
+  styleUrl: '../../shared/styles/centered-card.css',
 })
 export class RegisterComponent {
   private fb = inject(FormBuilder);
