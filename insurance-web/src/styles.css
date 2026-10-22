@@ -1,4 +1,73 @@
-/* You can add global styles to this file, and also import other style files */
+/* ==========================================================================
+   Global theme and shared UI kit
+   --------------------------------------------------------------------------
+   Rule of thumb:
+     - Used by two or more components, or part of the overall look -> here
+     - Used by exactly one component   -> that component's own .css file
+     - Shared by a few specific screens -> a partial in src/app/shared/styles/
+
+   Colors, radii and shadows come from the tokens below. Component stylesheets
+   should use the same tokens (var(--primary) and so on) rather than hard-coded values.
+   ========================================================================== */
+
+/*
+--------------------------------------------------------------------------
+1. Design tokens
+--------------------------------------------------------------------------
+*/
+
+:root {
+  /* surfaces and text */
+  --bg: #f3f5f9;
+  --surface: #ffffff;
+  --surface-alt: #fafbfc;
+  --text: #1c2430;
+  --text-soft: #3a4556;
+  --text-muted: #5b6677;
+  --text-disabled: #8a93a3;
+
+  /* borders */
+  --border: #dfe3ea;
+  --border-strong: #c7cdd8;
+  --border-subtle: #edf0f4;
+
+  /* brand */
+  --primary: #1f5eff;
+  --primary-contrast: #ffffff;
+  --primary-tint: #eef3ff;
+
+  /* status colors (background and text pairs) */
+  --success-bg: #e3f4e8;
+  --success-text: #1d6b3a;
+  --neutral-bg: #edf0f4;
+  --neutral-text: #5b6677;
+  --info-bg: #e4edff;
+  --info-text: #1741a6;
+  --warning-bg: #fff3d6;
+  --warning-text: #8a5a00;
+  --warning-text-strong: #6b4600;
+  --danger-bg: #fdecea;
+  --danger-text: #8a1f11;
+  --danger: #a82a1d;
+  --danger-border: #e3b5b0;
+  --error: #c0392b;
+
+  /* shape and elevation */
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 999px;
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.08);
+
+  /* type */
+  --font: system-ui, sans-serif;
+}
+
+/*
+--------------------------------------------------------------------------
+2. Base
+--------------------------------------------------------------------------
+*/
 *,
 *::before,
 *::after {
@@ -7,90 +76,13 @@
 
 body {
   margin: 0;
-  font-family: system-ui, sans-serif;
-  background: #f3f5f9;
-  color: #1c2430;
-}
-
-.auth-page {
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: 1rem;
-}
-
-.card {
-  width: 100%;
-  max-width: 420px;
-  background: #fff;
-  padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, .08);
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.card h1 {
-  margin: 0;
-  font-size: 1.5rem;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: .35rem;
-  font-size: .9rem;
-  font-weight: 600;
-}
-
-.field input {
-  padding: .6rem .75rem;
-  border: 1px solid #c7cdd8;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 400;
-}
-
-.field input.ng-touched.ng-invalid {
-  border-color: #c0392b;
-}
-
-.err {
-  color: #c0392b;
-  font-weight: 400;
-}
-
-.alert {
-  background: #fdecea;
-  color: #8a1f11;
-  padding: .75rem;
-  border-radius: 8px;
-}
-
-.btn {
-  padding: .75rem;
-  border: 0;
-  border-radius: 8px;
-  background: #1f5eff;
-  color: #fff;
-  font-size: 1rem;
-  cursor: pointer;
-}
-
-.btn:disabled {
-  opacity: .6;
-  cursor: not-allowed;
-}
-
-.alt {
-  margin: 0;
-  text-align: center;
-  font-size: .9rem;
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
 }
 
 :focus-visible {
-  outline: 2px solid #1f5eff;
+  outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
 
@@ -104,53 +96,15 @@ body {
 }
 
 .muted {
-  color: #5b6677;
-  font-size: .9rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
 }
 
-/* App shell */
-.nav {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  padding: .75rem 1.5rem;
-  background: #fff;
-  border-bottom: 1px solid #dfe3ea;
-  flex-wrap: wrap;
-}
-
-.nav .brand {
-  font-weight: 700;
-  color: #1c2430;
-  text-decoration: none;
-}
-
-.nav nav {
-  display: flex;
-  gap: 1rem;
-  flex: 1;
-}
-
-.nav nav a {
-  color: #3a4556;
-  text-decoration: none;
-  padding: .25rem 0;
-  border-bottom: 2px solid transparent;
-}
-
-.nav nav a.active {
-  color: #1f5eff;
-  border-bottom-color: #1f5eff;
-}
-
-.nav .who {
-  display: flex;
-  align-items: center;
-  gap: .75rem;
-  font-size: .9rem;
-}
-
-/* Page layout */
+/*
+--------------------------------------------------------------------------
+3. Page layout
+--------------------------------------------------------------------------
+*/
 .page {
   max-width: 1000px;
   margin: 0 auto;
@@ -162,7 +116,7 @@ body {
 }
 
 .page h1 {
-  margin: 0 0 .5rem;
+  margin: 0 0 0.5rem;
 }
 
 .page-head {
@@ -182,50 +136,217 @@ body {
   gap: 1.5rem;
   align-items: center;
   margin-bottom: 1rem;
-  font-size: .9rem;
+  font-size: 0.9rem;
   flex-wrap: wrap;
 }
 
 .toolbar select {
-  margin-left: .5rem;
-  padding: .4rem .5rem;
-  border: 1px solid #c7cdd8;
-  border-radius: 6px;
+  margin-left: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
 }
 
 .check {
   display: flex;
   align-items: center;
-  gap: .4rem;
+  gap: 0.4rem;
 }
 
-/* Table */
+/*
+--------------------------------------------------------------------------
+4. Buttons
+--------------------------------------------------------------------------
+*/
+.btn {
+  padding: 0.75rem;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--primary);
+  color: var(--primary-contrast);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/*
+Both button styles can sit on <a> elements, so reset link decoration
+*/
+.btn,
+.btn-sm {
+  text-decoration: none;
+  display: inline-block;
+  text-align: center;
+}
+
+.btn-sm {
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.btn-sm.primary {
+  background: var(--primary);
+  color: var(--primary-contrast);
+  border-color: var(--primary);
+}
+
+.btn-sm.danger {
+  color: var(--danger);
+  border-color: var(--danger-border);
+}
+
+/*
+--------------------------------------------------------------------------
+5. Feedback: alerts, notices, inline errors, badges
+--------------------------------------------------------------------------
+*/
+.alert {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+  padding: 0.75rem;
+  border-radius: var(--radius);
+}
+
+.notice {
+  background: var(--warning-bg);
+  color: var(--warning-text-strong);
+  padding: 0.75rem;
+  border-radius: var(--radius);
+  margin-bottom: 1rem;
+}
+
+.notice a {
+  color: inherit;
+  font-weight: 600;
+}
+
+.err {
+  color: var(--error);
+  font-weight: 400;
+}
+
+.badge {
+  font-size: 0.8rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-pill);
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.badge.off {
+  background: var(--neutral-bg);
+  color: var(--neutral-text);
+}
+
+.badge.warn {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+.badge.info {
+  background: var(--info-bg);
+  color: var(--info-text);
+}
+
+.badge.amber {
+  background: var(--warning-bg);
+  color: var(--warning-text);
+}
+
+/*
+--------------------------------------------------------------------------
+6. Forms
+--------------------------------------------------------------------------
+*/
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.field input {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  font-size: 1rem;
+  font-weight: 400;
+}
+
+/*
+Angular adds ng-touched / ng-invalid to controls automatically
+*/
+.field input.ng-touched.ng-invalid {
+  border-color: var(--error);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background: var(--surface);
+  padding: 1.5rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.form .field select,
+.form .field textarea {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  font: inherit;
+  font-weight: 400;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/*
+--------------------------------------------------------------------------
+7. Tables
+--------------------------------------------------------------------------
+*/
 .table-wrap {
   overflow-x: auto;
-  background: #fff;
-  border: 1px solid #dfe3ea;
-  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
 }
 
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-size: .95rem;
+  font-size: 0.95rem;
 }
 
 .table th,
 .table td {
-  padding: .75rem 1rem;
+  padding: 0.75rem 1rem;
   text-align: left;
-  border-bottom: 1px solid #edf0f4;
+  border-bottom: 1px solid var(--border-subtle);
   vertical-align: top;
 }
 
 .table th {
-  font-size: .8rem;
-  color: #5b6677;
+  font-size: 0.8rem;
+  color: var(--text-muted);
   font-weight: 600;
-  background: #fafbfc;
+  background: var(--surface-alt);
 }
 
 .table tr:last-child td {
@@ -238,119 +359,20 @@ body {
 }
 
 .table tr.inactive td {
-  color: #8a93a3;
+  color: var(--text-disabled);
 }
 
 .table .actions {
   white-space: nowrap;
   display: flex;
-  gap: .4rem;
+  gap: 0.4rem;
 }
 
-/* Small controls */
-.btn,
-.btn-sm {
-  text-decoration: none;
-  display: inline-block;
-  text-align: center;
-}
-
-.btn-sm {
-  padding: .35rem .7rem;
-  border: 1px solid #c7cdd8;
-  border-radius: 6px;
-  background: #fff;
-  color: #1c2430;
-  font-size: .85rem;
-  cursor: pointer;
-}
-
-.btn-sm.danger {
-  color: #a82a1d;
-  border-color: #e3b5b0;
-}
-
-.badge {
-  font-size: .8rem;
-  padding: .15rem .5rem;
-  border-radius: 999px;
-  background: #e3f4e8;
-  color: #1d6b3a;
-}
-
-.badge.off {
-  background: #edf0f4;
-  color: #5b6677;
-}
-
-/* Forms */
-.form {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  background: #fff;
-  padding: 1.5rem;
-  border-radius: 8px;
-  border: 1px solid #dfe3ea;
-}
-
-.form .field select,
-.form .field textarea {
-  padding: .6rem .75rem;
-  border: 1px solid #c7cdd8;
-  border-radius: 8px;
-  font: inherit;
-  font-weight: 400;
-}
-
-.row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 1rem;
-}
-
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: .75rem;
-}
-
-/* Dashboard tiles */
-.tiles {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1rem;
-  margin-top: 1.5rem;
-}
-
-.tile {
-  display: flex;
-  flex-direction: column;
-  gap: .25rem;
-  padding: 1.1rem;
-  background: #fff;
-  border: 1px solid #dfe3ea;
-  border-radius: 8px;
-  color: inherit;
-  text-decoration: none;
-}
-
-.tile:hover {
-  border-color: #1f5eff;
-}
-
-.tile span {
-  color: #5b6677;
-  font-size: .9rem;
-}
-
-.btn-sm.primary {
-  background: #1f5eff;
-  color: #fff;
-  border-color: #1f5eff;
-}
-
+/*
+--------------------------------------------------------------------------
+8. Detail list (label and value pairs on summary panels)
+--------------------------------------------------------------------------
+*/
 .summary-title {
   margin: 0;
   font-size: 1.2rem;
@@ -359,78 +381,16 @@ body {
 .summary {
   display: grid;
   grid-template-columns: max-content 1fr;
-  gap: .4rem 1.5rem;
+  gap: 0.4rem 1.5rem;
   margin: 0;
 }
 
 .summary dt {
-  color: #5b6677;
-  font-size: .9rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
 }
 
 .summary dd {
   margin: 0;
   font-weight: 600;
-}
-
-progress {
-  display: block;
-  width: 120px;
-  height: 6px;
-  margin-top: .35rem;
-}
-
-.badge.warn {
-  background: #fdecea;
-  color: #8a1f11;
-}
-
-.badge.info {
-  background: #e4edff;
-  color: #1741a6;
-}
-
-.badge.amber {
-  background: #fff3d6;
-  color: #8a5a00;
-}
-
-.table tr.selected td {
-  background: #eef3ff;
-}
-
-.pre {
-  white-space: pre-wrap;
-  margin: .25rem 0 0;
-}
-
-.notice {
-  background: #fff3d6;
-  color: #6b4600;
-  padding: .75rem;
-  border-radius: 8px;
-  margin-bottom: 1rem;
-}
-
-.notice a {
-  color: inherit;
-  font-weight: 600;
-}
-
-.alert-line {
-  margin-top: .4rem;
-}
-
-.toolbar input[type='search'] {
-  padding: .4rem .6rem;
-  border: 1px solid #c7cdd8;
-  border-radius: 6px;
-  min-width: 240px;
-  margin-left: .5rem;
-}
-
-.price {
-  font-size: 2rem;
-  font-weight: 700;
-  margin: 0;
 }
