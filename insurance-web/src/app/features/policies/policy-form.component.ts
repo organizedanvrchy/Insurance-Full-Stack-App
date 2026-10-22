@@ -7,11 +7,14 @@ import { PolicyService } from '../../core/services/policy.service';
 import { getErrorMessage } from '../../core/utils/http-error';
 import { PolicyRequest } from '../../core/models/policy/policyRequest';
 
-// One component for both "New" (/policies/new) and "Edit" (/policies/:id/edit).
+// One component for both
+// "New" (/policies/new) and
+// "Edit" (/policies/:id/edit).
 @Component({
   selector: 'app-policy-form',
   imports: [ReactiveFormsModule, RouterLink],
-  templateUrl: "policy-form.html"
+  templateUrl: "policy-form.html",
+  styleUrl: "policy-form.component.css",
 })
 export class PolicyFormComponent {
   private fb = inject(FormBuilder);
