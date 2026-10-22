@@ -1,0 +1,53 @@
+<section class="page">
+  <header class="page-head">
+    <h1>My claims</h1>
+    <a class="btn" routerLink="/my-policies">File a new claim</a>
+  </header>
+
+  @if (error()) {
+  <div class="alert" role="alert">{{ error() }}</div>
+  }
+
+  @if (loading()) {
+  <p class="muted">Loading…</p>
+  } @else {
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Claim</th>
+          <th>Incident date</th>
+          <th class="num">Amount</th>
+          <th>Status</th>
+          <th>Submitted</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (c of claims(); track c.claimId) {
+        <tr>
+          <td>
+            <strong>{{ c.claimNumber }}</strong>
+            <div class="muted">{{ c.policyName }}</div>
+          </td>
+          <td>{{ c.incidentDate | date: 'mediumDate' }}</td>
+          <td class="num">{{ c.claimAmount | currency }}</td>
+          <td>
+            <span [class]="'badge ' + badgeClass(c.status)">{{ label(c.status) }}</span>
+            @if (c.adminNotes) {
+            <div class="muted">Note from reviewer: {{ c.adminNotes }}</div>
+            }
+          </td>
+          <td>{{ c.submittedAt | date: 'medium' }}</td>
+        </tr>
+        } @empty {
+        <tr>
+          <td colspan="5" class="muted">
+            You haven't filed any claims. Start from <a routerLink="/my-policies">My policies</a>.
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  }
+</section>

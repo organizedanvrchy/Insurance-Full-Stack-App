@@ -1,0 +1,111 @@
+<section class="page">
+  <header class="page-head">
+    <h1>Claims review</h1>
+  </header>
+
+  <div class="toolbar">
+    <label>
+      Status
+      <select #statusSelect (change)="setFilter(statusSelect.value)">
+        <option value="">All statuses</option>
+        @for (s of statuses; track s) {
+        <option [value]="s">{{ label(s) }}</option>
+        }
+      </select>
+    </label>
+  </div>
+
+  @if (error()) {
+  <div class="alert" role="alert">{{ error() }}</div>
+  }
+
+  @if (selected(); as c) {
+  <div class="form" style="margin-bottom: 1rem">
+    <div class="page-head">
+      <h2 class="summary-title">
+        {{ c.claimNumber }}
+        <span [class]="'badge ' + badgeClass(c.status)">{{ label(c.status) }}</span>
+      </h2>
+      <button class="btn-sm" type="button" (click)="selected.set(null)">Close</button>
+    </div>
+
+    <dl class="summary">
+      <dt>Customer</dt>
+      <dd>{{ c.customerName }} ({{ c.customerEmail }})</dd>
+      <dt>Policy</dt>
+      <dd>{{ c.policyName }} ({{ c.policyType }})</dd>
+      <dt>Incident date</dt>
+      <dd>{{ c.incidentDate | date: 'mediumDate' }}</dd>
+      <dt>Claim amount</dt>
+      <dd>{{ c.claimAmount | currency }}</dd>
+      <dt>Submitted</dt>
+      <dd>{{ c.submittedAt | date: 'medium' }}</dd>
+    </dl>
+
+    <div>
+      <strong>Customer's description</strong>
+      <p class="pre">{{ c.description }}</p>
+    </div>
+
+    @if (c.reviewedBy) {
+    <p class="muted">Last updated by {{ c.reviewedBy }} on {{ c.reviewedAt | date: 'medium' }}</p>
+    }
+
+    <label class="field">
+      Notes to the customer (required when rejecting)
+      <textarea #notes rows="3" [value]="c.adminNotes ?? ''"></textarea>
+    </label>
+
+    <div class="form-actions">
+      @for (s of c.allowedNextStatuses; track s) {
+      <button type="button" class="btn-sm" [class.primary]="s !== 'Rejected'" [class.danger]="s === 'Rejected'"
+        [disabled]="busy()" (click)="act(c, s, notes.value)">
+        {{ actionLabels[s] }}
+      </button>
+      } @empty {
+      <span class="muted">No further actions: this claim is {{ label(c.status) }}.</span>
+      }
+    </div>
+  </div>
+  }
+
+  @if (loading()) {
+  <p class="muted">Loading claims…</p>
+  } @else {
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Claim</th>
+          <th>Customer</th>
+          <th class="num">Amount</th>
+          <th>Status</th>
+          <th>Submitted</th>
+          <th><span class="sr-only">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (c of claims(); track c.claimId) {
+        <tr [class.selected]="selected()?.claimId === c.claimId">
+          <td>
+            <strong>{{ c.claimNumber }}</strong>
+            <div class="muted">{{ c.policyName }}</div>
+          </td>
+          <td>{{ c.customerName }}</td>
+          <td class="num">{{ c.claimAmount | currency }}</td>
+          <td><span [class]="'badge ' + badgeClass(c.status)">{{ label(c.status) }}</span></td>
+          <td>{{ c.submittedAt | date: 'mediumDate' }}</td>
+          <td class="actions">
+            <button class="btn-sm" type="button" (click)="selected.set(c)">Open</button>
+          </td>
+        </tr>
+        } @empty {
+        <tr>
+          <td colspan="6" class="muted">No claims found.</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  }
+</section>

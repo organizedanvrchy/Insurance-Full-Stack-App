@@ -1,0 +1,94 @@
+<section class="page">
+  <header class="page-head">
+    <h1>Policies</h1>
+    @if (auth.isAdmin()) {
+    <a class="btn" routerLink="/policies/new">New policy</a>
+    }
+  </header>
+
+  <div class="toolbar">
+    <label>
+      Type
+      <select #typeSelect (change)="typeFilter.set(typeSelect.value)">
+        <option value="">All types</option>
+        @for (t of policyTypes; track t) {
+        <option [value]="t">{{ t }}</option>
+        }
+      </select>
+    </label>
+
+    @if (auth.isAdmin()) {
+    <label class="check">
+      <input #inactiveBox type="checkbox" (change)="toggleInactive(inactiveBox.checked)" />
+      Show deactivated
+    </label>
+    }
+  </div>
+
+  @if (error()) {
+  <div class="alert" role="alert">{{ error() }}</div>
+  }
+
+  @if (loading()) {
+  <p class="muted">Loading policies…</p>
+  } @else {
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Policy</th>
+          <th>Type</th>
+          <th class="num">Coverage</th>
+          <th class="num">Monthly</th>
+          <th class="num">Term</th>
+          @if (auth.isAdmin()) {
+          <th>Status</th>
+          <th><span class="sr-only">Actions</span></th>
+          } @else {
+          <th><span class="sr-only">Actions</span></th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (p of filtered(); track p.policyId) {
+        <tr [class.inactive]="!p.isActive">
+          <td>
+            <strong>{{ p.policyName }}</strong>
+            @if (p.description) {
+            <div class="muted">{{ p.description }}</div>
+            }
+          </td>
+          <td>{{ p.policyType }}</td>
+          <td class="num">{{ p.coverageAmount | currency }}</td>
+          <td class="num">{{ p.monthlyPremium | currency }}</td>
+          <td class="num">{{ p.termMonths }} mo</td>
+          @if (auth.isAdmin()) {
+          <td>
+            <span class="badge" [class.off]="!p.isActive">
+              {{ p.isActive ? 'Active' : 'Deactivated' }}
+            </span>
+          </td>
+          <td class="actions">
+            <a class="btn-sm" [routerLink]="['/policies', p.policyId, 'edit']">Edit</a>
+            @if (p.isActive) {
+            <button class="btn-sm danger" type="button" (click)="deactivate(p)">
+              Deactivate
+            </button>
+            }
+          </td>
+          } @else {
+          <td class="actions">
+            <a class="btn-sm primary" [routerLink]="['/policies', p.policyId, 'enroll']">Enroll</a>
+          </td>
+          }
+        </tr>
+        } @empty {
+        <tr>
+          <td colspan="7" class="muted">No policies found.</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  }
+</section>

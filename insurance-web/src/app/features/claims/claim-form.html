@@ -1,0 +1,88 @@
+<section class="page narrow">
+  <h1>File a claim</h1>
+
+  @if (error()) {
+  <div class="alert" role="alert">{{ error() }}</div>
+  }
+
+  @if (enrollment(); as e) {
+  @if (e.status !== 'Active') {
+  <div class="alert" role="alert">
+    Claims can only be filed on an active policy. This one is {{ e.status }}.
+  </div>
+  <a class="btn-sm" routerLink="/my-policies">Back to My policies</a>
+  } @else if (e.paymentAlert === 'Overdue') {
+  <div class="alert" role="alert">
+    This policy has {{ e.overdueCount }} overdue
+    {{ e.overdueCount === 1 ? 'installment' : 'installments' }}. Please pay
+    {{ e.overdueCount === 1 ? 'it' : 'them' }} before filing a claim.
+  </div>
+  <div class="form-actions">
+    <a class="btn-sm" routerLink="/my-policies">Back to My policies</a>
+    <a class="btn" [routerLink]="['/my-policies', e.enrollmentId, 'payments']">Go to payments</a>
+  </div>
+  } @else if (!windowOpen()) {
+  <div class="alert" role="alert">
+    Coverage on this policy starts {{ e.startDate | date: 'mediumDate' }}. You can file a claim
+    for an incident that happens once coverage has begun.
+  </div>
+  <a class="btn-sm" routerLink="/my-policies">Back to My policies</a>
+  } @else {
+  @if (e.paymentAlert === 'DueSoon') {
+  <div class="notice" role="status">
+    A premium of {{ e.nextDueAmount | currency }} is due {{ e.nextDueDate | date: 'mediumDate' }}.
+    You can still file a claim now, but unpaid premiums can block claims later.
+    <a [routerLink]="['/my-policies', e.enrollmentId, 'payments']">Pay now</a>
+  </div>
+  }
+
+  <form class="form" [formGroup]="form" (ngSubmit)="submit(e)" novalidate>
+    <div>
+      <h2 class="summary-title">{{ e.policyName }}</h2>
+      <p class="muted">
+        Coverage {{ e.startDate | date: 'mediumDate' }} to {{ e.endDate | date: 'mediumDate' }}
+        · up to {{ e.coverageAmount | currency }}
+      </p>
+    </div>
+
+    <label class="field">
+      Date of incident
+      <input type="date" formControlName="incidentDate" [min]="e.startDate" [max]="windowEnd()" />
+      <small class="muted">
+        Choose a date between {{ e.startDate | date: 'mediumDate' }} and
+        {{ windowEnd() | date: 'mediumDate' }}. The incident must have already happened,
+        during your coverage.
+      </small>
+      @if (f.incidentDate.touched && f.incidentDate.invalid) {
+      <small class="err">Choose the date the incident happened.</small>
+      }
+    </label>
+
+    <label class="field">
+      Claim amount
+      <input type="number" step="0.01" min="0" formControlName="claimAmount" />
+      @if (f.claimAmount.touched && f.claimAmount.invalid) {
+      <small class="err">Enter an amount greater than 0.</small>
+      }
+    </label>
+
+    <label class="field">
+      What happened?
+      <textarea rows="5" formControlName="description"></textarea>
+      @if (f.description.touched && f.description.invalid) {
+      <small class="err">Please describe the incident (10 to 2000 characters).</small>
+      }
+    </label>
+
+    <div class="form-actions">
+      <a class="btn-sm" routerLink="/my-policies">Cancel</a>
+      <button class="btn" type="submit" [disabled]="saving()">
+        {{ saving() ? 'Submitting…' : 'Submit claim' }}
+      </button>
+    </div>
+  </form>
+  }
+  } @else if (!error()) {
+  <p class="muted">Loading…</p>
+  }
+</section>

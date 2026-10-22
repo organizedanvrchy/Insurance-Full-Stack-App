@@ -1,0 +1,76 @@
+<section class="page">
+  <header class="page-head">
+    <h1>Customers</h1>
+    <span class="muted">{{ customers().length }} shown</span>
+  </header>
+
+  <div class="toolbar">
+    <label>
+      Search
+      <input #q type="search" placeholder="Name or email" (keyup.enter)="applySearch(q.value)" />
+    </label>
+    <button class="btn-sm" type="button" (click)="applySearch(q.value)">Search</button>
+
+    <label>
+      Status
+      <select #statusSelect (change)="setStatus(statusSelect.value)">
+        <option value="">All</option>
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+      </select>
+    </label>
+  </div>
+
+  @if (error()) {
+  <div class="alert" role="alert">{{ error() }}</div>
+  }
+
+  @if (loading()) {
+  <p class="muted">Loading customers…</p>
+  } @else {
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Customer</th>
+          <th>Phone</th>
+          <th>Joined</th>
+          <th class="num">Active policies</th>
+          <th class="num">Claims (open / total)</th>
+          <th>Status</th>
+          <th><span class="sr-only">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (c of customers(); track c.userId) {
+        <tr [class.inactive]="!c.isActive">
+          <td>
+            <strong>{{ c.fullName }}</strong>
+            <div class="muted">{{ c.email }}</div>
+          </td>
+          <td>{{ c.phone || '—' }}</td>
+          <td>{{ c.createdAt | date: 'mediumDate' }}</td>
+          <td class="num">{{ c.activePolicies }}</td>
+          <td class="num">{{ c.openClaims }} / {{ c.totalClaims }}</td>
+          <td>
+            <span class="badge" [class.off]="!c.isActive">
+              {{ c.isActive ? 'Active' : 'Inactive' }}
+            </span>
+          </td>
+          <td class="actions">
+            <button type="button" class="btn-sm" [class.danger]="c.isActive" [disabled]="busyId() === c.userId"
+              (click)="toggle(c)">
+              {{ c.isActive ? 'Deactivate' : 'Reactivate' }}
+            </button>
+          </td>
+        </tr>
+        } @empty {
+        <tr>
+          <td colspan="7" class="muted">No customers match.</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  }
+</section>

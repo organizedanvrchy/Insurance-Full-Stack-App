@@ -1,0 +1,127 @@
+<section class="page narrow">
+  <h1>Enroll in a policy</h1>
+
+  @if (error()) {
+  <div class="alert" role="alert">{{ error() }}</div>
+  }
+
+  @if (policy(); as p) {
+  <div class="form">
+    <h2 class="summary-title">{{ p.policyName }}</h2>
+    @if (p.description) {
+    <p class="muted">{{ p.description }}</p>
+    }
+    <dl class="summary">
+      <dt>Type</dt>
+      <dd>{{ p.policyType }}</dd>
+      <dt>Coverage</dt>
+      <dd>{{ p.coverageAmount | currency }}</dd>
+      <dt>Term</dt>
+      <dd>{{ p.termMonths }} months</dd>
+      <dt>Starting from</dt>
+      <dd>{{ p.monthlyPremium | currency }} / month</dd>
+    </dl>
+  </div>
+
+  @if (quote(); as qt) {
+  <!-- STAGE 2: the quote -->
+  <div class="form" style="margin-top: 1rem">
+    <h2 class="summary-title">Your personalized quote</h2>
+    <p class="price">{{ qt.monthlyPremium | currency }} <span class="muted">per month</span></p>
+
+    <div class="table-wrap">
+      <table class="table">
+        <tbody>
+          <tr>
+            <td>Base rate for this plan</td>
+            <td class="num">{{ qt.basePremium | currency }}</td>
+          </tr>
+          @for (f of qt.factors; track f.label) {
+          <tr>
+            <td>{{ f.label }}</td>
+            <td class="num">×{{ f.multiplier | number: '1.2-2' }}</td>
+          </tr>
+          }
+          <tr>
+            <td><strong>Your monthly premium</strong></td>
+            <td class="num"><strong>{{ qt.monthlyPremium | currency }}</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <dl class="summary">
+      <dt>Total over {{ qt.termMonths }} months</dt>
+      <dd>{{ qt.totalOverTerm | currency }}</dd>
+      <dt>Quote valid until</dt>
+      <dd>{{ qt.expiresAt | date: 'mediumDate' }}</dd>
+    </dl>
+
+    <label class="field">
+      Coverage start date
+      <input type="date" [formControl]="startDate" [min]="today" />
+      @if (startDate.touched && startDate.invalid) {
+      <small class="err">Choose a start date.</small>
+      }
+    </label>
+
+    <div class="form-actions">
+      <button class="btn-sm" type="button" (click)="editAnswers()">Change my answers</button>
+      <button class="btn" type="button" [disabled]="saving()" (click)="enroll(qt)">
+        {{ saving() ? 'Enrolling…' : 'Enroll now' }}
+      </button>
+    </div>
+  </div>
+  } @else {
+  <!-- STAGE 1: the questionnaire (built from the API's question list) -->
+  <form class="form" style="margin-top: 1rem" [formGroup]="form()" (ngSubmit)="getQuote(p)" novalidate>
+    <h2 class="summary-title">Tell us a bit about you</h2>
+    <p class="muted">We use your answers to calculate your price.</p>
+
+    @for (q of questions(); track q.key) {
+    <label class="field">
+      {{ q.label }}
+
+      @switch (q.kind) {
+      @case ('Number') {
+      <input type="number" step="1" [attr.min]="q.min" [attr.max]="q.max" [formControlName]="q.key" />
+      }
+      @case ('Date') {
+      <input type="date" [max]="today" [formControlName]="q.key" />
+      }
+      @case ('Boolean') {
+      <span class="check">
+        <input type="checkbox" [formControlName]="q.key" /> Yes
+      </span>
+      }
+      @case ('Choice') {
+      <select [formControlName]="q.key">
+        <option value="" disabled>Select…</option>
+        @for (o of q.options; track o) {
+        <option [value]="o">{{ o }}</option>
+        }
+      </select>
+      }
+      }
+
+      @if (q.helpText) {
+      <small class="muted">{{ q.helpText }}</small>
+      }
+      @if (invalid(q.key)) {
+      <small class="err">Please answer this question.</small>
+      }
+    </label>
+    }
+
+    <div class="form-actions">
+      <a class="btn-sm" routerLink="/policies">Cancel</a>
+      <button class="btn" type="submit" [disabled]="saving()">
+        {{ saving() ? 'Calculating…' : 'Get my quote' }}
+      </button>
+    </div>
+  </form>
+  }
+  } @else if (!error()) {
+  <p class="muted">Loading…</p>
+  }
+</section>

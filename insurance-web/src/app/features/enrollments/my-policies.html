@@ -1,0 +1,89 @@
+<section class="page">
+  <header class="page-head">
+    <h1>My policies</h1>
+    <a class="btn" routerLink="/policies">Browse policies</a>
+  </header>
+
+  @if (error()) {
+  <div class="alert" role="alert">{{ error() }}</div>
+  }
+
+  @if (overdueCount() > 0) {
+  <div class="alert" role="alert">
+    {{ overdueCount() }} of your {{ overdueCount() === 1 ? 'policies has' : 'policies have' }}
+    overdue premiums. Claims are blocked on those policies until the overdue installments are paid.
+  </div>
+  } @else if (dueSoonCount() > 0) {
+  <div class="notice" role="status">
+    {{ dueSoonCount() }} {{ dueSoonCount() === 1 ? 'policy has' : 'policies have' }} a premium due soon.
+  </div>
+  }
+
+  @if (loading()) {
+  <p class="muted">Loading…</p>
+  } @else {
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Policy</th>
+          <th>Coverage period</th>
+          <th class="num">Coverage</th>
+          <th class="num">Monthly</th>
+          <th>Premiums paid</th>
+          <th>Status</th>
+          <th><span class="sr-only">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (e of enrollments(); track e.enrollmentId) {
+        <tr [class.inactive]="e.status !== 'Active'">
+          <td>
+            <strong>{{ e.policyName }}</strong>
+            <div class="muted">{{ e.policyType }}</div>
+          </td>
+          <td>{{ e.startDate | date: 'mediumDate' }} to {{ e.endDate | date: 'mediumDate' }}</td>
+          <td class="num">{{ e.coverageAmount | currency }}</td>
+          <td class="num">{{ e.monthlyPremium | currency }}</td>
+          <td>
+            {{ e.paymentsPaid }} of {{ e.paymentsTotal }}
+            <progress [value]="e.paymentsPaid" [max]="e.paymentsTotal || 1"></progress>
+          </td>
+          <td>
+            <span class="badge" [class.off]="e.status !== 'Active'">{{ e.status }}</span>
+            @switch (e.paymentAlert) {
+            @case ('Overdue') {
+            <div class="alert-line">
+              <span class="badge warn">Payment overdue</span>
+              <div class="muted">{{ e.overdueCount }} past due</div>
+            </div>
+            }
+            @case ('DueSoon') {
+            <div class="alert-line">
+              <span class="badge amber">Payment due {{ e.nextDueDate | date: 'MMM d' }}</span>
+              <div class="muted">{{ e.nextDueAmount | currency }}</div>
+            </div>
+            }
+            }
+          </td>
+          <td class="actions">
+            <a class="btn-sm" [class.primary]="e.paymentAlert !== 'None'"
+              [routerLink]="['/my-policies', e.enrollmentId, 'payments']">
+              {{ e.paymentAlert !== 'None' ? 'Pay now' : 'Payments' }}
+            </a>
+            @if (e.status === 'Active') {
+            <a class="btn-sm" [routerLink]="['/my-policies', e.enrollmentId, 'claims', 'new']">File claim</a>
+            <button class="btn-sm danger" type="button" (click)="cancel(e)">Cancel</button>
+            }
+          </td>
+        </tr>
+        } @empty {
+        <tr>
+          <td colspan="7" class="muted">You haven't enrolled in any policies yet.</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  }
+</section>

@@ -1,0 +1,30 @@
+<section class="page">
+  <h1>Welcome, {{ auth.user()?.fullName }}</h1>
+  <p class="muted">Signed in as {{ auth.user()?.email }} ({{ auth.user()?.role }})</p>
+
+  <div class="tiles">
+    <a class="tile" routerLink="/policies">
+      <strong>Browse policies</strong>
+      <span>See coverage options and monthly premiums.</span>
+    </a>
+    @if (auth.isAdmin()) {
+    <a class="tile" routerLink="/admin/claims">
+      <strong>Review claims</strong>
+      <span>Work through submitted claims.</span>
+    </a>
+    <a class="tile" routerLink="/admin/customers">
+      <strong>Customers</strong>
+      <span>Search customers and manage account access.</span>
+    </a>
+    } @else {
+    <a class="tile" routerLink="/my-policies">
+      <strong>My policies</strong>
+      <span>Your coverage and premium progress.</span>
+    </a>
+    <a class="tile" routerLink="/claims">
+      <strong>My claims</strong>
+      <span>Track the status of your claims.</span>
+    </a>
+    }
+  </div>
+</section>

@@ -1,0 +1,74 @@
+<section class="page">
+  <header class="page-head">
+    <h1>Premium schedule</h1>
+    <a class="btn-sm" routerLink="/my-policies">Back to My policies</a>
+  </header>
+
+  @if (error()) {
+  <div class="alert" role="alert">{{ error() }}</div>
+  }
+
+  @if (loading()) {
+  <p class="muted">Loading…</p>
+  } @else if (enrollment(); as e) {
+  <div class="form">
+    <h2 class="summary-title">{{ e.policyName }}</h2>
+    <dl class="summary">
+      <dt>Coverage period</dt>
+      <dd>{{ e.startDate | date: 'mediumDate' }} to {{ e.endDate | date: 'mediumDate' }}</dd>
+      <dt>Status</dt>
+      <dd>{{ e.status }}</dd>
+      <dt>Installments paid</dt>
+      <dd>{{ paidCount() }} of {{ payments().length }}</dd>
+      <dt>Total paid</dt>
+      <dd>{{ totalPaid() | currency }}</dd>
+      <dt>Remaining balance</dt>
+      <dd>{{ balance() | currency }}</dd>
+      @if (overdueCount() > 0) {
+      <dt>Overdue</dt>
+      <dd class="err">{{ overdueCount() }} installment(s) past due</dd>
+      }
+    </dl>
+  </div>
+
+  <div class="table-wrap" style="margin-top: 1rem">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Due date</th>
+          <th class="num">Amount</th>
+          <th>Status</th>
+          <th>Paid on</th>
+          <th><span class="sr-only">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (p of payments(); track p.paymentId; let i = $index) {
+        <tr>
+          <td>{{ i + 1 }}</td>
+          <td>{{ p.dueDate | date: 'mediumDate' }}</td>
+          <td class="num">{{ p.amount | currency }}</td>
+          <td>
+            <span class="badge" [class.off]="p.status === 'Pending'" [class.warn]="p.status === 'Overdue'">{{ p.status
+              }}</span>
+          </td>
+          <td>{{ p.paidDate ? (p.paidDate | date: 'mediumDate') : '—' }}</td>
+          <td class="actions">
+            @if (e.status === 'Active' && p.paymentId === nextPayable()?.paymentId) {
+            <button class="btn-sm primary" type="button" [disabled]="payingId() !== null" (click)="pay(p)">
+              {{ payingId() === p.paymentId ? 'Paying…' : 'Pay ' + (p.amount | currency) }}
+            </button>
+            }
+          </td>
+        </tr>
+        } @empty {
+        <tr>
+          <td colspan="6" class="muted">No installments to show.</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  }
+</section>

@@ -1,0 +1,68 @@
+<section class="page narrow">
+  <h1>{{ id ? 'Edit policy' : 'New policy' }}</h1>
+
+  @if (error()) {
+  <div class="alert" role="alert">{{ error() }}</div>
+  }
+
+  <form class="form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <label class="field">
+      Policy name
+      <input type="text" formControlName="policyName" />
+      @if (f.policyName.touched && f.policyName.invalid) {
+      <small class="err">Name is required (max 100 characters).</small>
+      }
+    </label>
+
+    <label class="field">
+      Type
+      <select formControlName="policyType">
+        <option value="" disabled>Select a type</option>
+        @for (t of policyTypes; track t) {
+        <option [value]="t">{{ t }}</option>
+        }
+      </select>
+      @if (f.policyType.touched && f.policyType.invalid) {
+      <small class="err">Choose a policy type.</small>
+      }
+    </label>
+
+    <label class="field">
+      Description (optional)
+      <textarea rows="3" formControlName="description"></textarea>
+    </label>
+
+    <div class="row">
+      <label class="field">
+        Coverage amount
+        <input type="number" step="0.01" min="0" formControlName="coverageAmount" />
+        @if (f.coverageAmount.touched && f.coverageAmount.invalid) {
+        <small class="err">Enter an amount greater than 0.</small>
+        }
+      </label>
+
+      <label class="field">
+        Monthly premium
+        <input type="number" step="0.01" min="0" formControlName="monthlyPremium" />
+        @if (f.monthlyPremium.touched && f.monthlyPremium.invalid) {
+        <small class="err">Enter an amount greater than 0.</small>
+        }
+      </label>
+
+      <label class="field">
+        Term (months)
+        <input type="number" step="1" min="1" max="600" formControlName="termMonths" />
+        @if (f.termMonths.touched && f.termMonths.invalid) {
+        <small class="err">Enter 1 to 600 months.</small>
+        }
+      </label>
+    </div>
+
+    <div class="form-actions">
+      <a class="btn-sm" routerLink="/policies">Cancel</a>
+      <button class="btn" type="submit" [disabled]="saving()">
+        {{ saving() ? 'Saving…' : 'Save policy' }}
+      </button>
+    </div>
+  </form>
+</section>
