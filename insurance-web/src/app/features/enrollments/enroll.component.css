@@ -1,0 +1,21 @@
+/*
+Enroll page: the plan summary, then
+either the questionnaire or the quote.
+*/
+
+/*
+Space between the plan summary card and
+the card that follows it
+*/
+.stage {
+  margin-top: 1rem;
+}
+
+/*
+The big monthly price on the quote card
+*/
+.price {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0;
+}

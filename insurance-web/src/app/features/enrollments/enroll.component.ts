@@ -15,7 +15,8 @@ import { AnswerValue } from "../../core/models/enums";
 @Component({
   selector: 'app-enroll',
   imports: [ReactiveFormsModule, RouterLink, CurrencyPipe, DatePipe, DecimalPipe],
-  templateUrl: "enroll.html"
+  templateUrl: "enroll.html",
+  styleUrl: "enroll.component.css",
 })
 export class EnrollComponent {
   private route = inject(ActivatedRoute);

@@ -1,0 +1,15 @@
+/*
+My policies: payment alert line under
+the status badge, and the premiums progress bar.
+*/
+
+.alert-line {
+  margin-top: 0.4rem;
+}
+
+progress {
+  display: block;
+  width: 120px;
+  height: 6px;
+  margin-top: 0.35rem;
+}

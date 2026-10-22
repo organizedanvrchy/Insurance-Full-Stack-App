@@ -9,6 +9,7 @@ import { Enrollment } from '../../core/models/enrollment/enrollment';
   selector: 'app-my-policies',
   imports: [RouterLink, CurrencyPipe, DatePipe],
   templateUrl: "my-policies.html",
+  styleUrl: "my-policies.component.css",
 })
 export class MyPoliciesComponent {
   private service = inject(EnrollmentService);
