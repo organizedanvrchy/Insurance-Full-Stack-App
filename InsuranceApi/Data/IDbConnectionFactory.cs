@@ -1,0 +1,22 @@
+using Microsoft.Data.SqlClient;
+
+namespace InsuranceApi.Data;
+
+public interface IDbConnectionFactory
+{
+    SqlConnection Create();
+}
+
+public class SqlConnectionFactory : IDbConnectionFactory
+{
+    private readonly string _connectionString;
+
+    public SqlConnectionFactory(IConfiguration config)
+    {
+        _connectionString = config.GetConnectionString("InsuranceDb")
+            ?? throw new InvalidOperationException("Connection string 'InsuranceDb' is missing.");
+    }
+
+    // A new connection per operation. ADO.NET pools them under the hood, so this is cheap.
+    public SqlConnection Create() => new(_connectionString);
+}
