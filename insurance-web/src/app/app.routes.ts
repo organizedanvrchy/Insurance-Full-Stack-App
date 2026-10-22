@@ -13,7 +13,7 @@ export const routes: Routes = [
       import('./features/auth/register.component').then((m) => m.RegisterComponent),
   },
 
-  // Everything below needs login and renders inside the shell (nav bar + outlet)
+  // Pages that need login and render inside the shell (nav bar + outlet)
   {
     path: '',
     canActivate: [authGuard],
@@ -91,5 +91,10 @@ export const routes: Routes = [
     ],
   },
 
-  { path: '**', redirectTo: '' },
+  // Anything else: 404 page instead of silently redirecting
+  {
+    path: '**',
+    loadComponent: () =>
+      import('./features/not-found/not-found.component').then((m) => m.NotFoundComponent),
+  },
 ];
