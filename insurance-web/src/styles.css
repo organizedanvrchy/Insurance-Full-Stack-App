@@ -1,48 +1,124 @@
-/* ==========================================================================
-   Global theme and shared UI kit
-   --------------------------------------------------------------------------
-   Rule of thumb:
-     - Used by two or more components, or part of the overall look -> here
-     - Used by exactly one component   -> that component's own .css file
-     - Shared by a few specific screens -> a partial in src/app/shared/styles/
+/*
+==========================================================================
+Global theme and shared UI kit
+--------------------------------------------------------------------------
+  Rule of thumb:
+    - Used by two or more components, or part of the overall look -> here
+    - Used by exactly one component   -> that component's own .css file
+    - Shared by a few specific screens -> a partial in src/app/shared/styles/
 
-   Colors, radii and shadows come from the tokens below. Component stylesheets
-   should use the same tokens (var(--primary) and so on) rather than hard-coded values.
-   ========================================================================== */
+  Structure:
+    1. Palettes       raw swatches, never used directly in components
+    2. Shared tokens  shape and type, identical in both themes
+    3. Light theme    semantic tokens (the default)
+    4. Dark theme     the same tokens, overridden under [data-theme='dark']
+    5+ Base styles and the shared UI kit, written only with semantic tokens
+
+  Components should use semantic tokens (var(--primary), var(--border) ...),
+  never palette swatches or hex values, so both themes work automatically.
+========================================================================== */
 
 /*
 --------------------------------------------------------------------------
-1. Design tokens
+1. Palettes
+Both palettes reuse some names (deep-space-blue, yale-blue)
+with different values, so light swatches are prefixed lt-
+and dark swatches dk-. Currently, Not every swatch is used.
 --------------------------------------------------------------------------
 */
-
 :root {
-  /* surfaces and text */
-  --bg: #f3f5f9;
-  --surface: #ffffff;
-  --surface-alt: #fafbfc;
-  --text: #1c2430;
-  --text-soft: #3a4556;
-  --text-muted: #5b6677;
-  --text-disabled: #8a93a3;
+  /* Light palette */
+  --lt-deep-space-blue: #012a4a;
+  --lt-yale-blue: #013a63;
+  --lt-yale-blue-2: #01497c;
+  --lt-yale-blue-3: #014f86;
+  --lt-rich-cerulean: #2a6f97;
+  --lt-cerulean: #2c7da0;
+  --lt-air-force-blue: #468faf;
+  --lt-steel-blue: #61a5c2;
+  --lt-sky-blue-light: #89c2d9;
+  --lt-light-blue: #a9d6e5;
 
-  /* borders */
-  --border: #dfe3ea;
-  --border-strong: #c7cdd8;
-  --border-subtle: #edf0f4;
+  /* Dark palette */
+  --dk-ink-black: #000e14;
+  --dk-ink-black-2: #00111a;
+  --dk-ink-black-3: #00141f;
+  --dk-ink-black-4: #001824;
+  --dk-ink-black-5: #001b29;
+  --dk-deep-space-blue: #002233;
+  --dk-deep-space-blue-2: #00293d;
+  --dk-deep-space-blue-3: #003047;
+  --dk-deep-space-blue-4: #003652;
+  --dk-yale-blue: #003d5c;
+  /*
+  The dark palette has no light text color,
+  so this is derived (a pale blue-white).
+  */
+  --dk-text: #e8f3f8;
+}
+
+/*
+--------------------------------------------------------------------------
+2. Shared tokens (same in both themes)
+--------------------------------------------------------------------------
+*/
+:root {
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 999px;
+  --font: system-ui, sans-serif;
+}
+
+/*
+--------------------------------------------------------------------------
+3. Light theme (default): white background,
+   dark blue text and borders,
+   light blues for highlights and accents
+--------------------------------------------------------------------------
+*/
+:root {
+  color-scheme: light;          /* native controls (date picker, scrollbars) follow the theme */
+  accent-color: var(--primary); /* checkboxes and progress bars */
+
+  /* surfaces */
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-alt: color-mix(in srgb, var(--lt-light-blue) 20%, transparent);   /* table headers */
+  --input-bg: #ffffff;
+  --hover-bg: color-mix(in srgb, var(--lt-light-blue) 15%, transparent);
+
+  /* text */
+  --text: var(--lt-deep-space-blue);
+  --text-soft: var(--lt-yale-blue);
+  --text-muted: var(--lt-rich-cerulean);
+  --text-disabled: var(--lt-air-force-blue);
+  --link: var(--lt-yale-blue-3);
+
+  /*
+  borders: light for outlines,
+  darker for interactive controls
+  */
+  --border: var(--lt-light-blue);
+  --border-subtle: color-mix(in srgb, var(--lt-light-blue) 40%, transparent);
+  --border-strong: var(--lt-air-force-blue);
 
   /* brand */
-  --primary: #1f5eff;
+  --primary: var(--lt-yale-blue-2);
+  --primary-hover: var(--lt-yale-blue);
   --primary-contrast: #ffffff;
-  --primary-tint: #eef3ff;
+  --primary-tint: color-mix(in srgb, var(--lt-light-blue) 25%, transparent);   /* selected row */
+  --accent: var(--lt-cerulean);                                                /* focus ring, active nav */
 
-  /* status colors (background and text pairs) */
-  --success-bg: #e3f4e8;
-  --success-text: #1d6b3a;
-  --neutral-bg: #edf0f4;
-  --neutral-text: #5b6677;
-  --info-bg: #e4edff;
-  --info-text: #1741a6;
+  /*
+  status colors (background and text pairs)
+  */
+  --success-bg: #e1f3e8;
+  --success-text: #1b6b3a;
+  --neutral-bg: color-mix(in srgb, var(--lt-light-blue) 25%, transparent);
+  --neutral-text: var(--lt-rich-cerulean);
+  --info-bg: var(--lt-light-blue);
+  --info-text: var(--lt-deep-space-blue);
   --warning-bg: #fff3d6;
   --warning-text: #8a5a00;
   --warning-text-strong: #6b4600;
@@ -52,20 +128,72 @@
   --danger-border: #e3b5b0;
   --error: #c0392b;
 
-  /* shape and elevation */
-  --radius-sm: 6px;
-  --radius: 8px;
-  --radius-lg: 12px;
-  --radius-pill: 999px;
-  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.08);
-
-  /* type */
-  --font: system-ui, sans-serif;
+  /* elevation */
+  --shadow-card: 0 4px 24px color-mix(in srgb, var(--lt-deep-space-blue) 12%, transparent);
 }
 
 /*
 --------------------------------------------------------------------------
-2. Base
+4. Dark theme: darkest swatch as the page,
+   lighter swatches for surfaces,
+   light blues for text and accents
+--------------------------------------------------------------------------
+*/
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  /*
+  surfaces: stepped from darkest (page)
+  to lighter (cards, headers, highlights)
+  */
+  --bg: var(--dk-ink-black);
+  --surface: var(--dk-ink-black-4);
+  --surface-alt: var(--dk-deep-space-blue);
+  --input-bg: var(--dk-ink-black-2);
+  --hover-bg: var(--dk-deep-space-blue-3);
+
+  /* text */
+  --text: var(--dk-text);
+  --text-soft: var(--lt-light-blue);
+  --text-muted: var(--lt-steel-blue);
+  --text-disabled: var(--lt-air-force-blue);
+  --link: var(--lt-sky-blue-light);
+
+  /* borders */
+  --border: var(--dk-deep-space-blue-4);
+  --border-subtle: var(--dk-deep-space-blue-2);
+  --border-strong: var(--lt-rich-cerulean);
+
+  /* brand */
+  --primary: var(--lt-steel-blue);
+  --primary-hover: var(--lt-sky-blue-light);
+  --primary-contrast: var(--dk-ink-black);
+  --primary-tint: var(--dk-deep-space-blue-3);
+  --accent: var(--lt-steel-blue);
+
+  /* status colors */
+  --success-bg: #0e3a2b;
+  --success-text: #8fd9ae;
+  --neutral-bg: var(--dk-deep-space-blue-2);
+  --neutral-text: var(--lt-sky-blue-light);
+  --info-bg: var(--dk-deep-space-blue-4);
+  --info-text: var(--lt-light-blue);
+  --warning-bg: #3a2c06;
+  --warning-text: #f2c66b;
+  --warning-text-strong: #f2c66b;
+  --danger-bg: #3d1511;
+  --danger-text: #ffb4a8;
+  --danger: #ff8f80;
+  --danger-border: #7a2f27;
+  --error: #ff8f80;
+
+  /* elevation */
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.55);
+}
+
+/*
+--------------------------------------------------------------------------
+5. Base
 --------------------------------------------------------------------------
 */
 *,
@@ -81,8 +209,28 @@ body {
   color: var(--text);
 }
 
+a {
+  color: var(--link);
+}
+
+/*
+Native form controls do not inherit the theme
+Set it once for all of them
+*/
+input,
+select,
+textarea {
+  color: var(--text);
+  background: var(--input-bg);
+}
+
+::placeholder {
+  color: var(--text-disabled);
+  opacity: 1;
+}
+
 :focus-visible {
-  outline: 2px solid var(--primary);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -102,7 +250,7 @@ body {
 
 /*
 --------------------------------------------------------------------------
-3. Page layout
+6. Page layout
 --------------------------------------------------------------------------
 */
 .page {
@@ -155,7 +303,7 @@ body {
 
 /*
 --------------------------------------------------------------------------
-4. Buttons
+7. Buttons
 --------------------------------------------------------------------------
 */
 .btn {
@@ -168,13 +316,17 @@ body {
   cursor: pointer;
 }
 
+.btn:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
 .btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
 /*
-Both button styles can sit on <a> elements, so reset link decoration
+Both button styles can sit on <a> elements
 */
 .btn,
 .btn-sm {
@@ -193,10 +345,24 @@ Both button styles can sit on <a> elements, so reset link decoration
   cursor: pointer;
 }
 
+.btn-sm:hover:not(:disabled) {
+  background: var(--hover-bg);
+}
+
+.btn-sm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .btn-sm.primary {
   background: var(--primary);
   color: var(--primary-contrast);
   border-color: var(--primary);
+}
+
+.btn-sm.primary:hover:not(:disabled) {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
 }
 
 .btn-sm.danger {
@@ -204,9 +370,13 @@ Both button styles can sit on <a> elements, so reset link decoration
   border-color: var(--danger-border);
 }
 
+.btn-sm.danger:hover:not(:disabled) {
+  background: var(--danger-bg);
+}
+
 /*
 --------------------------------------------------------------------------
-5. Feedback: alerts, notices, inline errors, badges
+8. Feedback: alerts, notices, inline errors, badges
 --------------------------------------------------------------------------
 */
 .alert {
@@ -264,7 +434,7 @@ Both button styles can sit on <a> elements, so reset link decoration
 
 /*
 --------------------------------------------------------------------------
-6. Forms
+9. Forms
 --------------------------------------------------------------------------
 */
 .field {
@@ -283,9 +453,7 @@ Both button styles can sit on <a> elements, so reset link decoration
   font-weight: 400;
 }
 
-/*
-Angular adds ng-touched / ng-invalid to controls automatically
-*/
+/* Angular adds ng-touched / ng-invalid to controls automatically */
 .field input.ng-touched.ng-invalid {
   border-color: var(--error);
 }
@@ -318,7 +486,7 @@ Angular adds ng-touched / ng-invalid to controls automatically
 
 /*
 --------------------------------------------------------------------------
-7. Tables
+10. Tables
 --------------------------------------------------------------------------
 */
 .table-wrap {
@@ -349,6 +517,10 @@ Angular adds ng-touched / ng-invalid to controls automatically
   background: var(--surface-alt);
 }
 
+.table tbody tr:hover td {
+  background: var(--hover-bg);
+}
+
 .table tr:last-child td {
   border-bottom: 0;
 }
@@ -370,7 +542,7 @@ Angular adds ng-touched / ng-invalid to controls automatically
 
 /*
 --------------------------------------------------------------------------
-8. Detail list (label and value pairs on summary panels)
+11. Detail list (label and value pairs on summary panels)
 --------------------------------------------------------------------------
 */
 .summary-title {
