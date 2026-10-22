@@ -15,6 +15,7 @@ shared by login, register and not-found.
   max-width: 420px;
   background: var(--surface);
   padding: 2rem;
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
   display: flex;
@@ -28,7 +29,8 @@ shared by login, register and not-found.
 }
 
 /*
-"No account? Create one" line under the form
+"No account? Create one"
+line under the form
 */
 .alt {
   margin: 0;

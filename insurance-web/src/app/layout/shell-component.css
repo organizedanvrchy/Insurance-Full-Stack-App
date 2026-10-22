@@ -14,7 +14,7 @@ App shell: the top navigation bar.
 
 .brand {
   font-weight: 700;
-  color: var(--text);
+  color: var(--primary);
   text-decoration: none;
 }
 
@@ -31,13 +31,17 @@ nav a {
   border-bottom: 2px solid transparent;
 }
 
+nav a:hover {
+  color: var(--primary);
+}
+
 /*
-routerLinkActive="active" adds this
-class to the current page's link
+routerLinkActive="active" adds this class
+to the current page's link
 */
 nav a.active {
   color: var(--primary);
-  border-bottom-color: var(--primary);
+  border-bottom-color: var(--accent);
 }
 
 .who {

@@ -22,7 +22,8 @@ Dashboard: grid of navigation tiles.
 }
 
 .tile:hover {
-  border-color: var(--primary);
+  border-color: var(--accent);
+  background: var(--primary-tint);
 }
 
 .tile span {
