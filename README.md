@@ -351,4 +351,4 @@ Swagger is enabled only in the Development environment. Set `ASPNETCORE_ENVIRONM
 
 ## Author
 
-Built by **YOUR NAME** as a full-stack portfolio project. [GitHub](https://github.com/<your-username>) · [LinkedIn](https://www.linkedin.com/in/YOUR-PROFILE)
+Built by Vimal Ramnarain as a full-stack portfolio project. [GitHub](https://github.com/<your-username>) · [LinkedIn](https://www.linkedin.com/in/YOUR-PROFILE)
