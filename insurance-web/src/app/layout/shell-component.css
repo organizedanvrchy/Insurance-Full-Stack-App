@@ -215,6 +215,12 @@
     left: 0;
     right: 0;
     z-index: 30;
+
+    /* The bar is a grid, and grid alignment still applies to absolutely positioned children.
+       Without these two lines the panel shrinks to its content and centers itself. */
+    justify-self: stretch;
+    align-self: start;
+
     padding: 0.5rem 1rem 1rem;
     background: var(--surface);
     border-bottom: 1px solid var(--border);
