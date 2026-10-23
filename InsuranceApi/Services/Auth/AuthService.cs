@@ -27,7 +27,8 @@ public class AuthService : IAuthService
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),   // salted + slow on purpose
             Phone = request.Phone,
             Address = request.Address,
-            Role = UserRole.Customer      // never trust the client to choose its own role
+            Role = UserRole.Customer,       // never trust the client to choose its own role
+            CreatedAt = DateTime.UtcNow     // only used for this response; the database stamps the real value
         };
 
         user.UserId = await _users.CreateAsync(user);
@@ -62,6 +63,10 @@ public class AuthService : IAuthService
         UserId = u.UserId,
         FullName = u.FullName,
         Email = u.Email,
-        Role = u.Role.ToString()
+        Role = u.Role,
+        Phone = u.Phone,
+        Address = u.Address,
+        // ADO.NET returns DATETIME2 with an unspecified kind, but the column holds UTC.
+        CreatedAt = DateTime.SpecifyKind(u.CreatedAt, DateTimeKind.Utc)
     };
 }

@@ -591,3 +591,82 @@ Both button styles can sit on <a> elements
   margin: 0;
   font-weight: 600;
 }
+
+/*
+--------------------------------------------------------------------------
+12. Stat cards, panels and avatar (dashboard, profile, nav bar)
+--------------------------------------------------------------------------
+*/
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin: 1.25rem 0;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 1.1rem 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--accent);
+  border-radius: var(--radius);
+}
+
+.stat.danger {
+  border-top-color: var(--danger);
+}
+
+.stat.danger .stat-value {
+  color: var(--danger);
+}
+
+.stat-label {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.stat-value {
+  font-size: 1.7rem;
+  line-height: 1.2;
+}
+
+.stat-hint {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+}
+
+.panel h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+}
+
+/* Round badge with the user's initials */
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--primary-contrast);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.avatar.lg {
+  width: 5rem;
+  height: 5rem;
+  font-size: 1.6rem;
+}

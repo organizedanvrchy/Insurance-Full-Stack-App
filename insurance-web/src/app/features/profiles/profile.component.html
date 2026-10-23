@@ -1,0 +1,161 @@
+<section class="page">
+  <header class="page-head">
+    <h1>My profile</h1>
+  </header>
+  <p class="lede">
+    @if (auth.isAdmin()) {
+    Your administrator account details.
+    } @else {
+    Your account details, premium activity and recent claims.
+    }
+  </p>
+
+  @if (error()) {
+  <div class="alert" role="alert">{{ error() }}</div>
+  }
+
+  @if (loading()) {
+  <p class="muted">Loading your profile…</p>
+  } @else if (profile(); as p) {
+  <div class="layout">
+    <!-- ============ Account details ============ -->
+    <section class="profile-card" aria-label="Account details">
+      <div class="avatar lg" aria-hidden="true">{{ initials(p.fullName) }}</div>
+      <h2>{{ p.fullName }}</h2>
+      <span class="badge info">{{ p.role }}</span>
+
+      <dl class="details">
+        <div>
+          <dt>Email</dt>
+          <dd>{{ p.email }}</dd>
+        </div>
+        <div>
+          <dt>Phone</dt>
+          <dd>{{ p.phone || 'Not provided' }}</dd>
+        </div>
+        <div>
+          <dt>Address</dt>
+          <dd>{{ p.address || 'Not provided' }}</dd>
+        </div>
+        <div>
+          <dt>Member since</dt>
+          <dd>{{ p.createdAt | date: 'longDate' }}</dd>
+        </div>
+        @if (!auth.isAdmin()) {
+        <div>
+          <dt>Active policies</dt>
+          <dd>{{ activePolicies() }}</dd>
+        </div>
+        }
+      </dl>
+    </section>
+
+    <!-- ============ Payment statistics ============ -->
+    <div class="main-col">
+      @if (auth.isAdmin()) {
+      <section class="panel">
+        <h2>Administrator account</h2>
+        <p class="muted">
+          Administrators manage plans, review claims and look after customer accounts. Policies,
+          premium payments and claims appear on customer accounts.
+        </p>
+      </section>
+      } @else {
+      <div class="stats">
+        <div class="stat">
+          <span class="stat-label">Total paid</span>
+          <strong class="stat-value">{{ summary().totalPaid | currency }}</strong>
+          <span class="stat-hint">{{ summary().paidCount }} installments</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Due in 30 days</span>
+          <strong class="stat-value">{{ summary().dueSoon | currency }}</strong>
+          <span class="stat-hint">Scheduled premiums</span>
+        </div>
+        <div class="stat" [class.danger]="summary().overdueCount > 0">
+          <span class="stat-label">Overdue</span>
+          <strong class="stat-value">{{ summary().overdue | currency }}</strong>
+          <span class="stat-hint">
+            {{ summary().overdueCount > 0 ? summary().overdueCount + ' past due' : 'Nothing overdue' }}
+          </span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Paid on time</span>
+          <strong class="stat-value">
+            {{ summary().onTimePercent === null ? '—' : summary().onTimePercent + '%' }}
+          </strong>
+          <span class="stat-hint">Of paid installments</span>
+        </div>
+      </div>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Premiums by due month</h2>
+          <a routerLink="/my-policies">My policies</a>
+        </div>
+        <p class="muted chart-note">The last 6 months, this month and the next 5.</p>
+
+        @if (hasChartData()) {
+        <app-payment-chart [buckets]="buckets()" />
+        } @else {
+        <p class="muted">
+          No premium payments in this period yet. They appear here once you
+          <a routerLink="/policies">enroll in a policy</a>.
+        </p>
+        }
+      </section>
+      }
+    </div>
+  </div>
+
+  <!-- ============ Claims ============ -->
+  @if (!auth.isAdmin()) {
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Recent claims</h2>
+      <a routerLink="/claims">View all claims</a>
+    </div>
+    <p class="muted chart-note">
+      {{ claims().length }} total · {{ openClaims() }} open · {{ paidOut() | currency }} paid out
+    </p>
+
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Claim</th>
+            <th>Incident date</th>
+            <th class="num">Amount</th>
+            <th>Status</th>
+            <th>Submitted</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of recentClaims(); track c.claimId) {
+          <tr>
+            <td>
+              <strong>{{ c.claimNumber }}</strong>
+              <div class="muted">{{ c.policyName }}</div>
+            </td>
+            <td>{{ c.incidentDate | date: 'mediumDate' }}</td>
+            <td class="num">{{ c.claimAmount | currency }}</td>
+            <td>
+              <span [class]="'badge ' + badgeClass(c.status)">{{ label(c.status) }}</span>
+            </td>
+            <td>{{ c.submittedAt | date: 'mediumDate' }}</td>
+          </tr>
+          } @empty {
+          <tr>
+            <td colspan="5" class="muted">
+              No claims yet. If something happens, you can file one from
+              <a routerLink="/my-policies">My policies</a>.
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+  }
+  }
+</section>

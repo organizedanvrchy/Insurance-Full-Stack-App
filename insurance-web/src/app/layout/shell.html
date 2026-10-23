@@ -1,4 +1,12 @@
 <header class="nav">
+  <!-- Decorative rain behind the nav content -->
+  <div class="nav-rain" aria-hidden="true">
+    @for (d of drops; track $index) {
+    <span class="drop" [style.left.%]="d.left" [style.height.px]="d.length" [style.animation-delay.s]="d.delay"
+      [style.animation-duration.s]="d.duration"></span>
+    }
+  </div>
+
   <a class="brand" routerLink="/dashboard"><app-brand-logo /></a>
   <nav aria-label="Main">
     <a routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
@@ -12,7 +20,10 @@
     }
   </nav>
   <div class="who">
-    <span>{{ auth.user()?.fullName }}</span>
+    <a class="user-link" routerLink="/profile" routerLinkActive="active" title="View your profile">
+      <span class="avatar" aria-hidden="true">{{ initials() }}</span>
+      <span>{{ auth.user()?.fullName }}</span>
+    </a>
     <app-theme-toggle />
     <button class="btn-sm" type="button" (click)="auth.logout()">Log out</button>
   </div>
@@ -38,6 +49,7 @@
       <a routerLink="/my-policies">My policies</a>
       <a routerLink="/claims">My claims</a>
       }
+      <a routerLink="/profile">My profile</a>
     </nav>
   </div>
   <p class="fine-print">

@@ -1,0 +1,60 @@
+<div class="chart">
+  <div class="scroll">
+    <svg class="svg" [attr.viewBox]="'0 0 ' + width + ' ' + height" role="img" [attr.aria-label]="ariaLabel()">
+      <title>{{ ariaLabel() }}</title>
+
+      @for (t of ticks(); track t.value) {
+      <line class="grid" [attr.x1]="m.left" [attr.x2]="width - m.right" [attr.y1]="t.y" [attr.y2]="t.y" />
+      <text class="tick" [attr.x]="m.left - 8" [attr.y]="t.y" text-anchor="end" dominant-baseline="middle">
+        {{ t.label }}
+      </text>
+      }
+
+      @for (b of bars(); track b.key) {
+      @if (b.current) {
+      <rect class="now" [attr.x]="b.slotX" [attr.y]="m.top" [attr.width]="b.slotW" [attr.height]="plotH" />
+      }
+      <g class="bar">
+        <title>{{ b.tooltip }}</title>
+        @for (s of b.segments; track s.kind) {
+        <rect [class]="'seg ' + s.kind" [attr.x]="b.x" [attr.y]="s.y" [attr.width]="b.w" [attr.height]="s.h" />
+        }
+      </g>
+      <text class="month" [class.current]="b.current" [attr.x]="b.x + b.w / 2" [attr.y]="height - 12"
+        text-anchor="middle">
+        {{ b.label }}
+      </text>
+      }
+    </svg>
+  </div>
+
+  <ul class="legend">
+    <li><span class="swatch paid"></span>Paid</li>
+    <li><span class="swatch scheduled"></span>Scheduled</li>
+    <li><span class="swatch overdue"></span>Overdue</li>
+    <li class="note">Shaded column: this month</li>
+  </ul>
+
+  <!-- The same data as a table, for screen readers -->
+  <table class="sr-only">
+    <caption>Premium installments by due month</caption>
+    <thead>
+      <tr>
+        <th>Month</th>
+        <th>Paid</th>
+        <th>Scheduled</th>
+        <th>Overdue</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (b of buckets(); track b.key) {
+      <tr>
+        <td>{{ b.title }}</td>
+        <td>{{ fmt(b.paid) }}</td>
+        <td>{{ fmt(b.scheduled) }}</td>
+        <td>{{ fmt(b.overdue) }}</td>
+      </tr>
+      }
+    </tbody>
+  </table>
+</div>

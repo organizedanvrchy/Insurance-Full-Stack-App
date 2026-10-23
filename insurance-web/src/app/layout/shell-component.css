@@ -1,12 +1,6 @@
-/*
-App shell: top navigation bar,
-page area and footer.
-*/
+/* App shell: top navigation bar (with a little rain), page area and footer. */
 
-/*
-Keep the footer at the bottom
-even on short pages
-*/
+/* Keep the footer at the bottom even on short pages */
 :host {
   display: flex;
   flex-direction: column;
@@ -17,8 +11,9 @@ even on short pages
   flex: 1;
 }
 
-/* Navigation bar */
+/* ---- Navigation bar ---- */
 .nav {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 1.5rem;
@@ -26,6 +21,12 @@ even on short pages
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   flex-wrap: wrap;
+}
+
+/* Everything in the bar sits above the rain */
+.nav> :not(.nav-rain) {
+  position: relative;
+  z-index: 1;
 }
 
 .brand {
@@ -49,10 +50,7 @@ even on short pages
   color: var(--primary);
 }
 
-/*
-routerLinkActive="active" adds this
-class to the current page's link
-*/
+/* routerLinkActive="active" adds this class to the current page's link */
 .nav nav a.active {
   color: var(--primary);
   border-bottom-color: var(--accent);
@@ -65,7 +63,58 @@ class to the current page's link
   font-size: 0.9rem;
 }
 
-/* Footer */
+.user-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.2rem 0.7rem 0.2rem 0.25rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.user-link:hover {
+  background: var(--hover-bg);
+}
+
+.user-link.active {
+  border-color: var(--accent);
+}
+
+/* ---- Rain in the nav bar ---- */
+.nav-rain {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  /* drops are clipped to the bar */
+  pointer-events: none;
+  /* never blocks clicks */
+}
+
+.drop {
+  position: absolute;
+  top: -30px;
+  width: 1.5px;
+  border-radius: 2px;
+  background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--accent) 55%, transparent));
+  animation: nav-fall linear infinite;
+}
+
+@keyframes nav-fall {
+  to {
+    transform: translateY(150px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-rain {
+    display: none;
+  }
+}
+
+/* ---- Footer ---- */
 .footer {
   margin-top: 2rem;
   padding: 2rem 1.5rem 1.25rem;

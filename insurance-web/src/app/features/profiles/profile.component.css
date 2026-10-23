@@ -1,0 +1,81 @@
+/* Profile page: account card on the left, payment statistics on the right, claims underneath. */
+
+.layout {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+  margin-bottom: 1.25rem;
+}
+
+/* minmax(0, ...) and min-width: 0 let the chart scroll instead of stretching the page */
+.main-col {
+  display: grid;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.stats {
+  margin: 0;
+}
+
+/* ---- Account card ---- */
+.profile-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-align: center;
+}
+
+.profile-card h2 {
+  margin: 0.5rem 0 0;
+  font-size: 1.25rem;
+}
+
+.details {
+  width: 100%;
+  margin: 1rem 0 0;
+  display: grid;
+  gap: 0.9rem;
+  text-align: left;
+}
+
+.details dt {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.details dd {
+  margin: 0.15rem 0 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* ---- Panels ---- */
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.panel-head h2 {
+  margin: 0;
+}
+
+.chart-note {
+  margin: 0.25rem 0 1rem;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}

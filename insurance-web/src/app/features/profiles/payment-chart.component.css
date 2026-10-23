@@ -1,0 +1,90 @@
+/* Payment chart: SVG bars colored with theme tokens. */
+
+.scroll {
+  overflow-x: auto;
+}
+
+/* On narrow screens the chart scrolls sideways instead of shrinking its text */
+.svg {
+  display: block;
+  width: 100%;
+  min-width: 560px;
+  height: auto;
+}
+
+.grid {
+  stroke: var(--border-subtle);
+  stroke-width: 1;
+}
+
+.tick,
+.month {
+  fill: var(--text-muted);
+  font-size: 12px;
+}
+
+.month.current {
+  fill: var(--text);
+  font-weight: 700;
+}
+
+/* Highlight for the current month */
+.now {
+  fill: var(--primary-tint);
+}
+
+.seg.paid {
+  fill: var(--primary);
+}
+
+.seg.overdue {
+  fill: var(--danger);
+}
+
+.seg.scheduled {
+  fill: var(--accent);
+  fill-opacity: 0.45;
+}
+
+.bar:hover .seg {
+  opacity: 0.85;
+}
+
+.legend {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  font-size: 0.85rem;
+  color: var(--text-soft);
+}
+
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.legend .note {
+  color: var(--text-muted);
+}
+
+.swatch {
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 3px;
+}
+
+.swatch.paid {
+  background: var(--primary);
+}
+
+.swatch.overdue {
+  background: var(--danger);
+}
+
+.swatch.scheduled {
+  background: color-mix(in srgb, var(--accent) 45%, transparent);
+}

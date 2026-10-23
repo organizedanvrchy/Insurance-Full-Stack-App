@@ -26,6 +26,11 @@ export const routes: Routes = [
           import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent),
       },
       {
+        path: 'profile',
+        loadComponent: () =>
+          import('./features/profiles/profile.component').then((m) => m.ProfileComponent),
+      },
+      {
         path: 'policies',
         loadComponent: () =>
           import('./features/policies/policy-list.component').then((m) => m.PolicyListComponent),
