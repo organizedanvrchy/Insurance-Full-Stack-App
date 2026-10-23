@@ -2,6 +2,7 @@ using InsuranceApi.DTOs;
 using InsuranceApi.Enums;
 using InsuranceApi.Models;
 using InsuranceApi.Repositories;
+using InsuranceApi.Validation;
 
 namespace InsuranceApi.Services;
 
@@ -22,13 +23,13 @@ public class AuthService : IAuthService
     {
         var user = new User
         {
-            FullName = request.FullName.Trim(),
+            FullName = ContactFormatter.FullName(request.FirstName, request.LastName),
             Email = request.Email.Trim().ToLowerInvariant(),
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),   // salted + slow on purpose
-            Phone = request.Phone,
-            Address = request.Address,
-            Role = UserRole.Customer,       // never trust the client to choose its own role
-            CreatedAt = DateTime.UtcNow     // only used for this response; the database stamps the real value
+            Phone = PhoneNumbers.TryNormalize(request.Phone, out var phone) ? phone : null,   // stored in one format
+            Address = ContactFormatter.Address(request.Street, request.Unit, request.City, request.State, request.PostalCode),
+            Role = UserRole.Customer,      // never trust the client to choose its own role
+            CreatedAt = DateTime.UtcNow    // only used for this response; the database stamps the real value
         };
 
         user.UserId = await _users.CreateAsync(user);

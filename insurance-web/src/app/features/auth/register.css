@@ -1,0 +1,87 @@
+/* Register page: wider card, grouped sections, field rows and the password checklist. */
+
+/* The auth card is 420px by default. The longer form gets more room. */
+.card.wide {
+  max-width: 580px;
+}
+
+/* ---- Grouped sections ---- */
+.group {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.group legend {
+  margin-bottom: 0.1rem;
+  padding: 0;
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+/* ---- Side-by-side fields ---- */
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+/* City is the widest, then state, then ZIP */
+.field-row.three {
+  grid-template-columns: 1.5fr 1.2fr 1fr;
+}
+
+.field {
+  min-width: 0;
+}
+
+/* Selects get the same look as the text inputs (the shared .field rule only styles inputs) */
+.field select {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 400;
+}
+
+.field select.ng-touched.ng-invalid {
+  border-color: var(--error);
+}
+
+/* ---- Password checklist ---- */
+.rules {
+  list-style: none;
+  display: grid;
+  gap: 0.25rem;
+  margin: -0.25rem 0 0;
+  padding: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.rules li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.rules .mark {
+  width: 1rem;
+  text-align: center;
+}
+
+.rules li.met {
+  color: var(--success-text);
+}
+
+@media (max-width: 560px) {
+  .field-row,
+  .field-row.three {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,21 +1,43 @@
 using System.ComponentModel.DataAnnotations;
+using InsuranceApi.Validation;
 
 namespace InsuranceApi.DTOs;
 
 public class RegisterRequest
 {
-    [Required, StringLength(100)]
-    public string FullName { get; set; } = string.Empty;
+    // Letters (any language), spaces, hyphens, apostrophes and periods: O'Brien, Anne-Marie, St. John
+    private const string NamePattern = @"^[\p{L}\p{M}][\p{L}\p{M}'’.\- ]*$";
+    private const string NameMessage = "Use letters, spaces, hyphens and apostrophes only.";
+
+    // 45 + 1 + 45 fits the 100-character FullName column
+    [Required, StringLength(45), RegularExpression(NamePattern, ErrorMessage = NameMessage)]
+    public string FirstName { get; set; } = string.Empty;
+
+    [Required, StringLength(45), RegularExpression(NamePattern, ErrorMessage = NameMessage)]
+    public string LastName { get; set; } = string.Empty;
 
     [Required, EmailAddress, StringLength(256)]
     public string Email { get; set; } = string.Empty;
 
-    [Required, StringLength(72, MinimumLength = 8)]   // BCrypt only uses the first 72 bytes
+    [Required, StringLength(PasswordPolicy.MaxLength, ErrorMessage = "Password can be at most 72 characters."), StrongPassword]
     public string Password { get; set; } = string.Empty;
 
-    [Phone, StringLength(20)]
+    [UsPhone]
     public string? Phone { get; set; }
 
-    [StringLength(250)]
-    public string? Address { get; set; }
+    // Address, stored as one line (see ContactFormatter.Address)
+    [Required, StringLength(100)]
+    public string Street { get; set; } = string.Empty;
+
+    [StringLength(40)]
+    public string? Unit { get; set; }      // apartment, suite, unit (optional)
+
+    [Required, StringLength(60), RegularExpression(NamePattern, ErrorMessage = NameMessage)]
+    public string City { get; set; } = string.Empty;
+
+    [Required, UsState]
+    public string State { get; set; } = string.Empty;
+
+    [Required, RegularExpression(@"^\d{5}(-\d{4})?$", ErrorMessage = "Enter a 5-digit ZIP code.")]
+    public string PostalCode { get; set; } = string.Empty;
 }

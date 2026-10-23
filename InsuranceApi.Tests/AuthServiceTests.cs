@@ -8,8 +8,9 @@ namespace InsuranceApi.Tests;
 
 public class AuthServiceTests
 {
-    // xUnit creates a NEW instance of this class for 
-    // every test, so each test starts with an empty fake.
+    private const string Password = "Str0ng!Pass";
+
+    // xUnit creates a NEW instance of this class for every test, so each test starts with an empty fake.
     private readonly FakeUserRepository _users = new();
     private readonly AuthService _sut;
 
@@ -20,12 +21,19 @@ public class AuthServiceTests
 
     private static RegisterRequest NewRegistration(string email = "jane.doe@example.com") => new()
     {
-        FullName = "  Jane Doe  ",
+        FirstName = "  Jane ",
+        LastName = " Doe  ",
         Email = email,
-        Password = "Str0ngPass!"
+        Password = Password,
+        Phone = "203.555.0141",
+        Street = " 48  Maple Avenue ",
+        Unit = "Apt 3B",
+        City = "Stamford",
+        State = "ct",
+        PostalCode = "06902"
     };
 
-    // Register
+    // ---------------- Register ----------------
 
     [Fact]
     public async Task Register_stores_a_hash_never_the_plain_password()
@@ -33,8 +41,8 @@ public class AuthServiceTests
         await _sut.RegisterAsync(NewRegistration());
 
         var saved = _users.Users.Single();
-        Assert.NotEqual("Str0ngPass!", saved.PasswordHash);
-        Assert.True(BCrypt.Net.BCrypt.Verify("Str0ngPass!", saved.PasswordHash));
+        Assert.NotEqual(Password, saved.PasswordHash);
+        Assert.True(BCrypt.Net.BCrypt.Verify(Password, saved.PasswordHash));
     }
 
     [Fact]
@@ -46,13 +54,46 @@ public class AuthServiceTests
     }
 
     [Fact]
-    public async Task Register_trims_the_name_and_lowercases_the_email()
+    public async Task Register_joins_first_and_last_name_into_the_full_name()
+    {
+        await _sut.RegisterAsync(NewRegistration());
+
+        Assert.Equal("Jane Doe", _users.Users.Single().FullName);
+    }
+
+    [Fact]
+    public async Task Register_joins_the_address_parts_into_one_line()
+    {
+        await _sut.RegisterAsync(NewRegistration());
+
+        Assert.Equal("48 Maple Avenue, Apt 3B, Stamford, CT 06902", _users.Users.Single().Address);
+    }
+
+    [Fact]
+    public async Task Register_stores_the_phone_in_one_format()
+    {
+        await _sut.RegisterAsync(NewRegistration());
+
+        Assert.Equal("(203) 555-0141", _users.Users.Single().Phone);
+    }
+
+    [Fact]
+    public async Task Register_without_a_phone_stores_none()
+    {
+        var request = NewRegistration();
+        request.Phone = null;
+
+        await _sut.RegisterAsync(request);
+
+        Assert.Null(_users.Users.Single().Phone);
+    }
+
+    [Fact]
+    public async Task Register_lowercases_and_trims_the_email()
     {
         await _sut.RegisterAsync(NewRegistration("  Jane.Doe@Example.COM "));
 
-        var saved = _users.Users.Single();
-        Assert.Equal("Jane Doe", saved.FullName);
-        Assert.Equal("jane.doe@example.com", saved.Email);
+        Assert.Equal("jane.doe@example.com", _users.Users.Single().Email);
     }
 
     [Fact]
@@ -62,6 +103,7 @@ public class AuthServiceTests
 
         Assert.Equal("token-for-1", result.Token);
         Assert.Equal("jane.doe@example.com", result.User.Email);
+        Assert.Equal("Jane Doe", result.User.FullName);
     }
 
     [Fact]
@@ -73,14 +115,14 @@ public class AuthServiceTests
             () => _sut.RegisterAsync(NewRegistration("JANE.DOE@EXAMPLE.COM")));
     }
 
-    // Login
+    // ---------------- Login ----------------
 
     [Fact]
     public async Task Login_succeeds_with_the_right_password()
     {
         await _sut.RegisterAsync(NewRegistration());
 
-        var result = await _sut.LoginAsync(new LoginRequest { Email = "jane.doe@example.com", Password = "Str0ngPass!" });
+        var result = await _sut.LoginAsync(new LoginRequest { Email = "jane.doe@example.com", Password = Password });
 
         Assert.NotNull(result);
         Assert.Equal("token-for-1", result!.Token);
@@ -91,7 +133,7 @@ public class AuthServiceTests
     {
         await _sut.RegisterAsync(NewRegistration());
 
-        var result = await _sut.LoginAsync(new LoginRequest { Email = "JANE.Doe@Example.com", Password = "Str0ngPass!" });
+        var result = await _sut.LoginAsync(new LoginRequest { Email = "JANE.Doe@Example.com", Password = Password });
 
         Assert.NotNull(result);
     }
@@ -101,7 +143,7 @@ public class AuthServiceTests
     {
         await _sut.RegisterAsync(NewRegistration());
 
-        var result = await _sut.LoginAsync(new LoginRequest { Email = "jane.doe@example.com", Password = "WrongPassword1" });
+        var result = await _sut.LoginAsync(new LoginRequest { Email = "jane.doe@example.com", Password = "WrongPassword1!" });
 
         Assert.Null(result);
     }
@@ -109,7 +151,7 @@ public class AuthServiceTests
     [Fact]
     public async Task Login_fails_for_an_unknown_email()
     {
-        var result = await _sut.LoginAsync(new LoginRequest { Email = "nobody@example.com", Password = "Str0ngPass!" });
+        var result = await _sut.LoginAsync(new LoginRequest { Email = "nobody@example.com", Password = Password });
 
         Assert.Null(result);
     }
@@ -120,12 +162,12 @@ public class AuthServiceTests
         await _sut.RegisterAsync(NewRegistration());
         _users.Users.Single().IsActive = false;
 
-        var result = await _sut.LoginAsync(new LoginRequest { Email = "jane.doe@example.com", Password = "Str0ngPass!" });
+        var result = await _sut.LoginAsync(new LoginRequest { Email = "jane.doe@example.com", Password = Password });
 
         Assert.Null(result);
     }
 
-    // Profile
+    // ---------------- Profile ----------------
 
     [Fact]
     public async Task Profile_is_returned_for_an_active_user()
