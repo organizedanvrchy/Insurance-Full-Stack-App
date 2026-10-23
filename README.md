@@ -155,7 +155,7 @@ Run the scripts in `database/` **in numeric order** (VS Code with the mssql exte
 
 | Script | Purpose |
 |---|---|
-| `01_schema.sql` | Creates `InsuranceDb`, tables, constraints and indexes |
+| `01_schema.sql` | Add your own CREATE `DatabaseName` at the top, constraints and indexes |
 | `02_stored_procedures.sql` | User and policy procedures |
 | `03_enrollments.sql` | Enrollment view and procedures |
 | `04_payments.sql` | Payment view and procedures |
@@ -167,8 +167,6 @@ Run the scripts in `database/` **in numeric order** (VS Code with the mssql exte
 | `10_seed_policies.sql` | 20 plans: four variants for each policy type |
 | `11_seed_demo_data.sql` | *Optional:* demo customers, enrollments, payments and claims |
 | `12_remove_demo_data.sql` | *Optional:* removes the demo data |
-
-> On **Azure SQL Database**, `USE InsuranceDb;` is not supported. Remove that line from each script and run them against your database.
 
 ### 3. Configure and run the API
 
