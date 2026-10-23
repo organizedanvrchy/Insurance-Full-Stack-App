@@ -1,5 +1,7 @@
-import { Component, computed, inject } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Component, ElementRef, HostListener, computed, inject, signal, viewChild } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { filter } from 'rxjs';
 import { BRAND } from '../core/brand';
 import { AuthService } from '../core/services/auth.service';
 import { initialsOf } from '../core/utils/initials';
@@ -15,12 +17,20 @@ import { ThemeToggleComponent } from '../shared/components/theme-toggle.componen
 })
 export class ShellComponent {
   auth = inject(AuthService);
+  private router = inject(Router);
 
   readonly name = BRAND.name;
   readonly tagline = BRAND.shortSlogan;
   readonly year = new Date().getFullYear();
 
   initials = computed(() => initialsOf(this.auth.user()?.fullName));
+
+  menuOpen = signal(false);       // the hamburger panel (narrow screens)
+  userMenuOpen = signal(false);   // the account dropdown (wide screens)
+
+  private header = viewChild<ElementRef<HTMLElement>>('header');
+  private userMenu = viewChild<ElementRef<HTMLElement>>('userMenu');
+  private userButton = viewChild<ElementRef<HTMLButtonElement>>('userButton');
 
   // Fixed (not random) values so the rain looks the same on every visit.
   // Negative delays mean the rain is already falling when the page loads.
@@ -30,4 +40,50 @@ export class ShellComponent {
     duration: 1.2 + ((i * 53) % 10) / 10,
     length: 10 + ((i * 29) % 12),
   }));
+
+  constructor() {
+    // Close any open menu after navigating
+    this.router.events
+      .pipe(filter((e) => e instanceof NavigationEnd), takeUntilDestroyed())
+      .subscribe(() => this.closeMenus());
+  }
+
+  toggleMenu(): void {
+    this.menuOpen.update((open) => !open);
+    this.userMenuOpen.set(false);
+  }
+
+  toggleUserMenu(): void {
+    this.userMenuOpen.update((open) => !open);
+  }
+
+  closeMenus(): void {
+    this.menuOpen.set(false);
+    this.userMenuOpen.set(false);
+  }
+
+  logout(): void {
+    this.closeMenus();
+    this.auth.logout();
+  }
+
+  // Click outside: close the account dropdown, or the hamburger panel
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    const target = event.target as Node;
+    if (this.userMenuOpen() && !this.userMenu()?.nativeElement.contains(target)) {
+      this.userMenuOpen.set(false);
+    }
+    if (this.menuOpen() && !this.header()?.nativeElement.contains(target)) {
+      this.menuOpen.set(false);
+    }
+  }
+
+  // Escape closes whatever is open, and returns focus to the account button
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    const hadUserMenu = this.userMenuOpen();
+    this.closeMenus();
+    if (hadUserMenu) this.userButton()?.nativeElement.focus();
+  }
 }

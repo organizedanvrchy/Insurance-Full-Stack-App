@@ -1,4 +1,4 @@
-<header class="nav">
+<header class="nav" #header>
   <!-- Decorative rain behind the nav content -->
   <div class="nav-rain" aria-hidden="true">
     @for (d of drops; track $index) {
@@ -8,24 +8,97 @@
   </div>
 
   <a class="brand" routerLink="/dashboard"><app-brand-logo /></a>
-  <nav aria-label="Main">
-    <a routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
-    <a routerLink="/policies" routerLinkActive="active">Policies</a>
+
+  <!-- Centered links on wide screens; a dropdown panel on narrow screens -->
+  <nav id="main-nav" class="links" [class.open]="menuOpen()" aria-label="Main" (click)="closeMenus()">
+    <a class="nav-link" routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
+    <a class="nav-link" routerLink="/policies" routerLinkActive="active">Policies</a>
     @if (auth.isAdmin()) {
-    <a routerLink="/admin/claims" routerLinkActive="active">Claims</a>
-    <a routerLink="/admin/customers" routerLinkActive="active">Customers</a>
+    <a class="nav-link" routerLink="/admin/claims" routerLinkActive="active">Claims</a>
+    <a class="nav-link" routerLink="/admin/customers" routerLinkActive="active">Customers</a>
     } @else {
-    <a routerLink="/my-policies" routerLinkActive="active">My policies</a>
-    <a routerLink="/claims" routerLinkActive="active">My claims</a>
+    <a class="nav-link" routerLink="/my-policies" routerLinkActive="active">My policies</a>
+    <a class="nav-link" routerLink="/claims" routerLinkActive="active">My claims</a>
     }
-  </nav>
-  <div class="who">
-    <a class="user-link" routerLink="/profile" routerLinkActive="active" title="View your profile">
+
+    <!-- Narrow screens only: divider, then the account options -->
+    <div class="menu-divider" role="separator"></div>
+    <a class="menu-only" routerLink="/profile" routerLinkActive="active">
       <span class="avatar" aria-hidden="true">{{ initials() }}</span>
-      <span>{{ auth.user()?.fullName }}</span>
+      <span class="menu-user">
+        <strong>{{ auth.user()?.fullName }}</strong>
+        <small>Profile</small>
+      </span>
     </a>
+    <button class="menu-only" type="button" (click)="logout()">
+      <span class="menu-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+          <polyline points="16 17 21 12 16 7" />
+          <line x1="21" y1="12" x2="9" y2="12" />
+        </svg>
+      </span>
+      Log out
+    </button>
+  </nav>
+
+  <div class="actions">
     <app-theme-toggle />
-    <button class="btn-sm" type="button" (click)="auth.logout()">Log out</button>
+
+    <!-- Wide screens: the account button and its dropdown (last button on the right) -->
+    <div class="user-menu" #userMenu>
+      <button #userButton class="icon-btn" type="button" aria-haspopup="menu" [attr.aria-expanded]="userMenuOpen()"
+        [attr.aria-label]="'Account menu for ' + (auth.user()?.fullName ?? 'you')" [attr.title]="auth.user()?.fullName"
+        (click)="toggleUserMenu()">
+        {{ initials() }}
+      </button>
+
+      @if (userMenuOpen()) {
+      <div class="dropdown" role="menu" aria-label="Account">
+        <div class="dropdown-head">
+          <strong>{{ auth.user()?.fullName }}</strong>
+          <span>{{ auth.user()?.email }}</span>
+        </div>
+        <a class="dropdown-item" role="menuitem" routerLink="/profile" (click)="closeMenus()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+          Profile
+        </a>
+        <button class="dropdown-item" role="menuitem" type="button" (click)="logout()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+          Log out
+        </button>
+      </div>
+      }
+    </div>
+
+    <!-- Narrow screens: the hamburger (to the right of the theme toggle) -->
+    <button class="icon-btn menu-btn" type="button" aria-controls="main-nav" [attr.aria-expanded]="menuOpen()"
+      [attr.aria-label]="menuOpen() ? 'Close menu' : 'Open menu'" (click)="toggleMenu()">
+      @if (menuOpen()) {
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+        stroke-linejoin="round" aria-hidden="true">
+        <line x1="18" y1="6" x2="6" y2="18" />
+        <line x1="6" y1="6" x2="18" y2="18" />
+      </svg>
+      } @else {
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+        stroke-linejoin="round" aria-hidden="true">
+        <line x1="3" y1="6" x2="21" y2="6" />
+        <line x1="3" y1="12" x2="21" y2="12" />
+        <line x1="3" y1="18" x2="21" y2="18" />
+      </svg>
+      }
+    </button>
   </div>
 </header>
 

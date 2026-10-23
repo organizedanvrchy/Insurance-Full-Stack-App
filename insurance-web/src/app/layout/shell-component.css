@@ -1,4 +1,4 @@
-/* App shell: top navigation bar (with a little rain), page area and footer. */
+/* App shell: navigation bar (centered links, account menu, hamburger, rain), page area and footer. */
 
 /* Keep the footer at the bottom even on short pages */
 :host {
@@ -11,82 +11,147 @@
   flex: 1;
 }
 
-/* ---- Navigation bar ---- */
+/* ---- Navigation bar ----
+   Three columns: brand | links | actions. The two outer columns are equal (1fr),
+   so the links sit in the true center of the screen. */
 .nav {
   position: relative;
-  display: flex;
+  z-index: 10;
+  /* dropdowns open above the page content */
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  gap: 1.5rem;
+  column-gap: 1.5rem;
   padding: 0.75rem 1.5rem;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  flex-wrap: wrap;
 }
 
 /* Everything in the bar sits above the rain */
-.nav> :not(.nav-rain) {
+.brand,
+.links,
+.actions {
   position: relative;
   z-index: 1;
 }
 
 .brand {
+  justify-self: start;
   text-decoration: none;
 }
 
-.nav nav {
+.links {
   display: flex;
-  gap: 1rem;
-  flex: 1;
+  align-items: center;
+  gap: 1.5rem;
+  justify-self: center;
 }
 
-.nav nav a {
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-self: end;
+}
+
+/* ---- Main links ---- */
+.nav-link {
   color: var(--text-soft);
   text-decoration: none;
   padding: 0.25rem 0;
   border-bottom: 2px solid transparent;
 }
 
-.nav nav a:hover {
+.nav-link:hover {
   color: var(--primary);
 }
 
 /* routerLinkActive="active" adds this class to the current page's link */
-.nav nav a.active {
+.nav-link.active {
   color: var(--primary);
   border-bottom-color: var(--accent);
 }
 
-.who {
+/* Narrow-screen-only parts are hidden on wide screens */
+.menu-divider,
+.menu-only,
+.menu-btn {
+  display: none;
+}
+
+/* ---- Account dropdown (wide screens) ---- */
+.user-menu {
+  position: relative;
+}
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  z-index: 40;
+  min-width: 15rem;
+  padding: 0.35rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  animation: menu-in 0.12s ease-out;
+}
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.dropdown-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.6rem 0.75rem 0.7rem;
+  margin-bottom: 0.35rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.dropdown-head span {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.dropdown-item {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  font-size: 0.9rem;
-}
-
-.user-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.2rem 0.7rem 0.2rem 0.25rem;
-  border: 1px solid transparent;
-  border-radius: var(--radius-pill);
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
   color: var(--text);
-  font-weight: 600;
+  font: inherit;
+  font-size: 0.92rem;
+  text-align: left;
   text-decoration: none;
+  cursor: pointer;
 }
 
-.user-link:hover {
+.dropdown-item:hover {
   background: var(--hover-bg);
 }
 
-.user-link.active {
-  border-color: var(--accent);
+.dropdown-item svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  color: var(--text-muted);
 }
 
 /* ---- Rain in the nav bar ---- */
 .nav-rain {
   position: absolute;
   inset: 0;
+  z-index: 0;
   overflow: hidden;
   /* drops are clipped to the bar */
   pointer-events: none;
@@ -111,6 +176,116 @@
 @media (prefers-reduced-motion: reduce) {
   .nav-rain {
     display: none;
+  }
+
+  .dropdown {
+    animation: none;
+  }
+}
+
+/* ---- Narrow screens: hamburger menu ---- */
+@media (max-width: 900px) {
+  .nav {
+    grid-template-columns: 1fr auto;
+    /* brand | actions */
+    padding: 0.6rem 1rem;
+  }
+
+  .user-menu {
+    display: none;
+    /* the account options live in the panel instead */
+  }
+
+  .menu-btn {
+    display: inline-grid;
+  }
+
+  .links {
+    display: none;
+  }
+
+  /* The panel drops down under the bar */
+  .links.open {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.15rem;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 30;
+    padding: 0.5rem 1rem 1rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow-card);
+  }
+
+  .nav-link,
+  .menu-only {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.7rem 0.75rem;
+    border: 0;
+    border-radius: var(--radius-sm);
+    font-size: 1rem;
+  }
+
+  .nav-link.active {
+    background: var(--primary-tint);
+  }
+
+  /* The break line before the account options */
+  .menu-divider {
+    display: block;
+    height: 1px;
+    margin: 0.5rem 0;
+    background: var(--border);
+  }
+
+  .menu-only {
+    width: 100%;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-size: 1rem;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .menu-only:hover {
+    background: var(--hover-bg);
+  }
+
+  .menu-only.active {
+    background: var(--primary-tint);
+  }
+
+  .menu-user {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.25;
+  }
+
+  .menu-user small {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+  }
+
+  /* Same width as the avatar, so the "Log out" text lines up with the name above it */
+  .menu-icon {
+    display: inline-grid;
+    place-items: center;
+    width: 2rem;
+  }
+
+  .menu-icon svg {
+    width: 1.2rem;
+    height: 1.2rem;
+    color: var(--text-muted);
   }
 }
 
