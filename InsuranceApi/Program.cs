@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json.Serialization;
 using System.Security.Claims;
 using InsuranceApi.Data;
+using InsuranceApi.Exceptions;
 using InsuranceApi.Rating;
 using InsuranceApi.Repositories;
 using InsuranceApi.Services;
@@ -16,6 +17,7 @@ builder.Services.AddControllers()
     // Enums travel as names ("Admin"), and unknown names/numbers are rejected with a 400.
     o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(allowIntegerValues: false))
 );
+builder.Services.AddExceptionHandler<ApiExceptionHandler>(); // typed exceptions -> 400/404/409
 builder.Services.AddProblemDetails(); // unhandled exceptions -> clean 500 JSON
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
