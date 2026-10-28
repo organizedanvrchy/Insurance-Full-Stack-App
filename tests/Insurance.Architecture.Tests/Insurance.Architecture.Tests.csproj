@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Every service and the gateway, so their assemblies can be inspected. -->
+    <ProjectReference Include="..\..\src\Gateway\Insurance.Gateway\Insurance.Gateway.csproj" />
+    <ProjectReference Include="..\..\src\Services\Identity\Insurance.Identity\Insurance.Identity.csproj" />
+    <ProjectReference Include="..\..\src\Services\Catalog\Insurance.Catalog\Insurance.Catalog.csproj" />
+    <ProjectReference Include="..\..\src\Services\Quotes\Insurance.Quotes\Insurance.Quotes.csproj" />
+    <ProjectReference Include="..\..\src\Services\Enrollments\Insurance.Enrollments\Insurance.Enrollments.csproj" />
+    <ProjectReference Include="..\..\src\Services\Billing\Insurance.Billing\Insurance.Billing.csproj" />
+    <ProjectReference Include="..\..\src\Services\Claims\Insurance.Claims\Insurance.Claims.csproj" />
+  </ItemGroup>
+
+</Project>

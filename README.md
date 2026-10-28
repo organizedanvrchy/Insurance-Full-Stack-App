@@ -46,11 +46,11 @@ The application simulates the core operations of an insurer:
 
 1. An admin publishes **plans** (Health, Auto, Life, Home, Travel).
 2. A customer answers a short, plan-specific questionnaire. The server **rates** the applicant and issues a **quote**: a price with a full breakdown of how it was calculated, or an underwriting decline.
-3. The customer **enrolls** from the quote. One database transaction creates the policy and its monthly **premium schedule**.
+3. The customer **enrolls** from the quote. A **saga** across three services reserves the quote, creates the policy and its monthly **premium schedule**, and confirms the quote.
 4. The customer pays installments, and can **file claims** against active, paid-up policies.
 5. Admins move claims through a **review workflow**, and manage customer access.
 
-The backend follows a layered architecture (controllers, services, repositories, stored procedures). All data access uses **ADO.NET with parameterized stored procedures**, and the Angular frontend talks to it through a REST API documented with Swagger.
+The backend is a set of **microservices**: six ASP.NET Core services, each with its own database, behind an **API gateway + BFF**. Services call each other over HTTP for queries and exchange **events over RabbitMQ** for everything that changes state in another service. The Angular frontend talks only to the gateway. Inside each service, data access uses **ADO.NET with parameterized stored procedures**.
 
 ## Features
 
@@ -73,50 +73,72 @@ The backend follows a layered architecture (controllers, services, repositories,
 - Role-based authorization (`Customer`, `Admin`), with ownership checks on every record.
 - Centralized error handling that returns consistent RFC 7807 `ProblemDetails` responses.
 - Swagger/OpenAPI with JWT support for testing the API.
-- Seed scripts for a 20-plan catalog and a set of demo customers with realistic histories.
+- Seed data for a 20-plan catalog and a set of demo customers with realistic histories.
+- **Microservices:** six independently deployable services with a database each, an API gateway (YARP) with BFF composition, an event bus (MassTransit on RabbitMQ), an orchestrated saga with compensation, a transactional outbox, idempotent consumers, and graceful degradation when a service is down.
+- `docker compose up` starts the whole system: SQL Server, RabbitMQ, six services and the gateway.
 
 ## Tech stack
 
 | Layer | Technology |
 |---|---|
 | Frontend | Angular (standalone components, signals, lazy-loaded routes), TypeScript, HTML5, CSS3, RxJS |
-| API | C#, ASP.NET Core Web API, RESTful design, Swagger/OpenAPI (Swashbuckle) |
+| Services | C#, ASP.NET Core Web API (one per service), RESTful design, Swagger/OpenAPI (Swashbuckle) |
+| API gateway | YARP reverse proxy, JWT validation, BFF composition endpoints |
+| Messaging | RabbitMQ through MassTransit (retries, faults), transactional outbox |
 | Data access | ADO.NET (`Microsoft.Data.SqlClient`), parameterized stored procedures, views, LINQ in the service layer |
-| Database | SQL Server / Azure SQL Database (relational design, constraints, transactions, a sequence) |
-| Security | JWT bearer authentication, BCrypt, role-based authorization |
-| Patterns | Dependency injection, layered architecture, repository, strategy (rating engine), DTOs |
-| Testing | xUnit with hand-written fakes |
-| Hosting | Azure App Service (API and frontend), Azure SQL Database |
+| Database | SQL Server / Azure SQL Database: **one database per service**, created and migrated by the service at startup |
+| Security | JWT bearer authentication (validated by the gateway and every service), BCrypt, role-based authorization |
+| Patterns | Microservices, database per service, API gateway + BFF, saga (orchestration), transactional outbox, idempotent consumer, dependency injection, repository, strategy (rating engine), DTOs |
+| Testing | xUnit with hand-written fakes, architecture tests for service boundaries |
+| Containers | Docker, Docker Compose |
 | Tooling | Visual Studio Code, Git and GitHub |
 
 ## Architecture at a glance
 
 ```mermaid
-flowchart LR
-    subgraph Browser
-        SPA["Angular SPA"]
+flowchart TD
+    SPA["Angular SPA"] --> GW["API gateway + BFF<br/>YARP routing, JWT, composition"]
+    subgraph Microservices["Microservices, one database each"]
+        ID["Identity<br/>users, auth, JWT"]
+        CA["Catalog<br/>plans"]
+        QU["Quotes<br/>rating, quotes"]
+        EN["Enrollments<br/>policies, saga"]
+        BI["Billing<br/>premium payments"]
+        CL["Claims<br/>claims workflow"]
     end
-    subgraph Azure
-        FE["App Service<br/>static frontend"]
-        API["App Service<br/>ASP.NET Core Web API"]
-        DB[("Azure SQL Database")]
-    end
-    SPA -- "loads app" --> FE
-    SPA -- "HTTPS and JWT, JSON" --> API
-    API -- "ADO.NET and stored procedures" --> DB
+    GW --> ID & CA & QU & EN & BI & CL
+    ID --- IDB[("InsuranceIdentity")]
+    CA --- CDB[("InsuranceCatalog")]
+    QU --- QDB[("InsuranceQuotes")]
+    EN --- EDB[("InsuranceEnrollments")]
+    BI --- BDB[("InsuranceBilling")]
+    CL --- KDB[("InsuranceClaims")]
+    Microservices <--> BUS[["Event bus<br/>RabbitMQ (MassTransit)"]]
 ```
 
-Inside the API, a request flows one way:
+| Service | Owns | Talks to |
+|---|---|---|
+| **Identity** | Users, sign-in, JWT issuing | Nobody (others call it) |
+| **Catalog** | Plans | Nobody (others call it) |
+| **Quotes** (Quotes) | Rating engine, quotes | Catalog (HTTP). Consumes `EnrollmentActivated`, `EnrollmentFailed` |
+| **Enrollments** (Enrollments) | Policies, **the enrollment saga** | Quotes, Catalog, Billing (HTTP). Publishes `EnrollmentRequested`, `EnrollmentActivated`, `EnrollmentFailed`, `EnrollmentCancelled` through an outbox |
+| **Billing** | Premium schedules, payments | Enrollments (HTTP). Consumes `EnrollmentRequested`, `EnrollmentCancelled`, `EnrollmentFailed`; publishes `PremiumScheduleCreated` |
+| **Claims** (Claims) | Claims, review workflow | Enrollments, Billing, Catalog, Identity (HTTP) |
+| **Gateway + BFF** | Nothing | Routes `/api/*`; checks that the caller's account is active (Identity); composes the admin customer list (Identity + Enrollments + Claims) |
+
+**Rules that keep them independent:** a service never reads another service's database, and never references another service's code, only its `*.Contracts` package (events, internal API shapes and a typed HTTP client). `Insurance.Architecture.Tests` fails the build if either rule is broken. Queries go over HTTP; anything that changes another service's data goes through an event.
+
+Inside each service, a request flows one way:
 
 ```mermaid
 flowchart TD
-    C["Controllers<br/>HTTP, routing, authorization"] --> S["Services<br/>business rules"]
-    S --> R["Repositories<br/>ADO.NET, error translation"]
+    C["Controllers<br/>HTTP, routing, authorization"] --> S["Services<br/>business rules, calls to other services"]
+    S --> R["Repositories<br/>ADO.NET, error translation, outbox"]
     R --> P["Stored procedures<br/>data rules, transactions"]
-    P --> T[("Tables and views")]
+    P --> T[("The service's own tables and views")]
 ```
 
-Each layer only knows the one below it, through interfaces registered with dependency injection. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for sequence diagrams, the ER diagram, the claim workflow, the rating engine, the security model and the complete error-number registry.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the enrollment saga, the outbox, sequence diagrams, the data model of each service, the claim workflow, the rating engine, the security model and the complete error-number registry.
 
 ## Key business rules
 
@@ -134,12 +156,9 @@ Each layer only knows the one below it, through interfaces registered with depen
 
 ### Prerequisites
 
-- [.NET SDK](https://dotnet.microsoft.com/download) (current LTS)
+- [Docker](https://docs.docker.com/get-docker/) with Docker Compose (for the services, SQL Server and RabbitMQ)
+- [.NET SDK](https://dotnet.microsoft.com/download) (current LTS), to build, test or run a service outside Docker
 - [Node.js](https://nodejs.org/) 20 or later, and the Angular CLI (`npm install -g @angular/cli`)
-- SQL Server (any edition), **or** Azure SQL Database, **or** Docker:
-```bash
-  docker run -e ACCEPT_EULA=Y -e "MSSQL_SA_PASSWORD=YourStrong!Passw0rd" -p 1433:1433 -d mcr.microsoft.com/mssql/server:2022-latest
-```
 - Recommended VS Code extensions: C# Dev Kit, SQL Server (mssql), Angular Language Service
 
 ### 1. Clone
@@ -149,43 +168,21 @@ git clone https://github.com/<your-username>/insurance-management-system.git
 cd insurance-management-system
 ```
 
-### 2. Create the database
-
-Run the scripts in `database/` **in numeric order** (VS Code with the mssql extension, SSMS, Azure Data Studio or `sqlcmd` all work).
-
-| Script | Purpose |
-|---|---|
-| `01_schema.sql` | Add your own CREATE `DatabaseName` at the top, constraints and indexes |
-| `02_stored_procedures.sql` | User and policy procedures |
-| `03_enrollments.sql` | Enrollment view and procedures |
-| `04_payments.sql` | Payment view and procedures |
-| `05_claims.sql` | Claim number sequence, view and procedures |
-| `06_grace_period.sql` | 5-day overdue grace period |
-| `07_payment_alerts.sql` | Overdue count and next-due fields on the enrollment view |
-| `08_admin_customers.sql` | Customer summary view and procedures |
-| `09_quotes.sql` | Quotes table and procedures, and the quote-based enrollment procedure |
-| `10_seed_policies.sql` | 20 plans: four variants for each policy type |
-| `11_seed_demo_data.sql` | *Optional:* demo customers, enrollments, payments and claims |
-| `12_remove_demo_data.sql` | *Optional:* removes the demo data |
-
-### 3. Configure and run the API
+### 2. Start the backend
 
 ```bash
-cd InsuranceApi
-dotnet restore
-dotnet user-secrets init
-dotnet user-secrets set "Jwt:Key" "replace-with-at-least-32-random-characters"
-# Only if your connection string differs from appsettings.json:
-dotnet user-secrets set "ConnectionStrings:InsuranceDb" "Server=localhost;Database=InsuranceDb;Trusted_Connection=True;TrustServerCertificate=True;"
-dotnet run --urls http://localhost:5080
+cp deploy/.env.example deploy/.env
 ```
 
-Swagger UI: <http://localhost:5080/swagger> (available in the Development environment). Register a user with `POST /api/auth/register`, copy the token, click **Authorize** and paste it.
+Edit `deploy/.env` to set your own `SA_PASSWORD` and `JWT_KEY`, then:
 
-For SQL Server in Docker, use this connection string:
-`Server=localhost,1433;Database=InsuranceDb;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;`
+```bash
+docker compose -f deploy/docker-compose.yml up --build
+```
 
-### 4. Run the frontend
+This starts SQL Server, RabbitMQ, the six services and the gateway. Each service creates its own database on first start (its scripts are in `src/Services/<Service>/Insurance.<Service>/Database/`), and the Catalog service seeds the 20 plans. The API is at <http://localhost:5080/api>, and the RabbitMQ dashboard at <http://localhost:15672> (guest / guest) shows the queues and the events flowing.
+
+### 3. Run the frontend
 
 ```bash
 cd insurance-web
@@ -193,21 +190,42 @@ npm install
 ng serve
 ```
 
-Open <http://localhost:4200>. The API address is set in `src/app/core/api.config.ts` (`http://localhost:5080/api` by default).
+Open <http://localhost:4200>. The API address is set in `src/environments/environment.development.ts` (`http://localhost:5080/api`, the gateway).
 
-### 5. Create the admin account
+### 4. Create the admin account
 
-There is intentionally no public admin sign-up. Register a normal account in the app, then promote it:
+There is intentionally no public admin sign-up. Register a normal account in the app, then promote it in the Identity service's database:
 
-```sql
-UPDATE dbo.Users SET Role = 'Admin' WHERE Email = 'you@example.com';
+```bash
+docker compose -f deploy/docker-compose.yml exec sqlserver /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "<your SA_PASSWORD>" -Q "UPDATE InsuranceIdentity.accounts.Users SET Role = 'Admin' WHERE Email = 'you@example.com'"
 ```
 
 Sign in again so the new role is placed in your token.
 
+### 5. Optional: load the demo data
+
+```bash
+docker compose -f deploy/docker-compose.yml exec sqlserver /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "<your SA_PASSWORD>" -i /seed/demo-data.sql
+```
+
+`deploy/seed/remove-demo-data.sql` removes it again. These dev-only scripts write to all six databases at once, which works only because Docker Compose puts them on one SQL Server instance.
+
+### Running a service outside Docker
+
+Each service is a normal ASP.NET Core project with its own port (Identity 5101, Catalog 5102, Quotes 5103, Enrollments 5104, Billing 5105, Claims 5106, gateway 5080, set in each `Properties/launchSettings.json`). With SQL Server and RabbitMQ running (for example `docker compose -f deploy/docker-compose.yml up sqlserver rabbitmq`), set the service's connection string and the JWT key, then run it:
+
+```bash
+cd src/Services/Catalog/Insurance.Catalog
+dotnet user-secrets set "ConnectionStrings:Database" "Server=localhost,1433;Database=InsuranceCatalog;User Id=sa;Password=<SA_PASSWORD>;TrustServerCertificate=True;"
+dotnet user-secrets set "Jwt:Key" "<the same JWT_KEY as every other service>"
+dotnet run
+```
+
+Each service has Swagger at `/swagger` in the Development environment.
+
 ## Demo accounts
 
-After running `11_seed_demo_data.sql`, every demo customer signs in with the password **`Demo#2026pass`**.
+After loading `deploy/seed/demo-data.sql`, every demo customer signs in with the password **`Demo#2026pass`**.
 
 | Customer | Email | What to look at |
 |---|---|---|
@@ -218,54 +236,62 @@ After running `11_seed_demo_data.sql`, every demo customer signs in with the pas
 | Sofia Rodriguez | `sofia.rodriguez@demo.example` | New customer with a **payment due today** alert and no claims. |
 | Tyler Brooks | `tyler.brooks@demo.example` | **Inactive** account (sign-in is refused) with a cancelled policy. |
 
-The admin account is the one you promoted in step 5. These credentials exist for the development environment only.
+The admin account is the one you promoted in step 4. These credentials exist for the development environment only.
 
 ## Configuration reference
 
-| Setting | Where | Notes |
+Every setting can also be given as an environment variable (`:` becomes `__`), which is how `deploy/docker-compose.yml` configures the containers.
+
+| Setting | Used by | Notes |
 |---|---|---|
-| `ConnectionStrings:InsuranceDb` | `appsettings.json`, user secrets, or App Service setting `ConnectionStrings__InsuranceDb` | SQL Server or Azure SQL connection string |
-| `Jwt:Key` | **User secrets or App Service setting only. Never commit it.** | At least 32 characters |
-| `Jwt:Issuer`, `Jwt:Audience` | `appsettings.json` | Must match between token creation and validation |
-| `Jwt:ExpiryMinutes` | `appsettings.json` | Default 60 |
-| `Cors:AllowedOrigins` | `appsettings.json` (array) or `Cors__AllowedOrigins__0` | Frontend origins allowed to call the API |
-| `API_URL` | `InsuranceApi`-facing constant in `src/app/core/api.config.ts` | Frontend's API base address |
+| `ConnectionStrings:Database` | Each service | That service's own database. **Never shared between services** |
+| `Jwt:Key` | Every service and the gateway | **User secrets, `.env` or a secret store only. Never commit it.** At least 32 characters, the same everywhere |
+| `Jwt:Issuer`, `Jwt:Audience` | Every service and the gateway | Must match between token creation (Identity) and validation |
+| `Jwt:ExpiryMinutes` | Identity | Default 60 |
+| `RabbitMq:Host`, `Username`, `Password` | Quotes, Enrollments, Billing | The event bus |
+| `Services:<Name>` | Callers of another service | Base address of that service's internal API, for example `Services:Catalog` |
+| `ReverseProxy:Clusters:<name>:Destinations:d1:Address` | Gateway | Where each service runs |
+| `Cors:AllowedOrigins` | Gateway | Frontend origins allowed to call the API |
+| `Enrollment:SagaTimeout` | Enrollments | How long `POST /api/enrollments` waits for the saga before answering `202` (default 10 seconds) |
+| `apiUrl` | `insurance-web/src/environments/environment.development.ts` (dev) and `environment.ts` (production build) | The gateway's address |
 
 ## API overview
 
-Interactive documentation is in Swagger. Statuses follow REST conventions: `201` on create, `204` on updates with no body, `400` validation or business rule, `401` not signed in, `403` wrong role, `404` not found **or not yours**, `409` state conflict.
+Every endpoint is reached through the gateway at `/api`. Each service documents its own endpoints in its Swagger UI. Statuses follow REST conventions: `201` on create, `202` when an enrollment is accepted but still being set up, `204` on updates with no body, `400` validation or business rule, `401` not signed in, `403` wrong role, `404` not found **or not yours**, `409` state conflict, `503` a service the request needs is unavailable.
 
-| Area | Endpoint | Access |
+| Area (service) | Endpoint | Access |
 |---|---|---|
-| **Auth** | `POST /api/auth/register` | Public |
+| **Auth** (Identity) | `POST /api/auth/register` | Public |
 | | `POST /api/auth/login` | Public |
 | | `GET /api/auth/me` | Signed in |
-| **Policies** | `GET /api/policies` | Signed in (`?includeInactive=true` for admins) |
+| **Policies** (Catalog) | `GET /api/policies` | Signed in (`?includeInactive=true` for admins) |
 | | `GET /api/policies/{id}` | Signed in |
 | | `POST /api/policies`, `PUT /api/policies/{id}`, `DELETE /api/policies/{id}` | Admin (delete is a soft delete) |
-| **Quotes** | `GET /api/quotes/questions/{policyId}` | Customer |
+| **Quotes** (Quotes) | `GET /api/quotes/questions/{policyId}` | Customer |
 | | `POST /api/quotes` | Customer |
 | | `GET /api/quotes/{id}` | Customer (owner) |
-| **Enrollments** | `GET /api/enrollments/mine` | Signed in (own records) |
+| **Enrollments** (Enrollments) | `GET /api/enrollments/mine` | Signed in (own records) |
 | | `GET /api/enrollments/{id}` | Owner or admin |
-| | `POST /api/enrollments` | Customer |
+| | `POST /api/enrollments` | Customer (`201`, or `202` while the saga is still running) |
 | | `PUT /api/enrollments/{id}/cancel` | Owner |
-| **Payments** | `GET /api/enrollments/{id}/payments` | Owner or admin |
+| **Payments** (Billing) | `GET /api/enrollments/{id}/payments` | Owner or admin |
 | | `POST /api/payments/{id}/pay` | Customer (owner) |
-| **Claims** | `POST /api/claims` | Customer |
+| **Claims** (Claims) | `POST /api/claims` | Customer |
 | | `GET /api/claims/mine` | Customer |
 | | `GET /api/claims?status=` | Admin |
 | | `GET /api/claims/{id}` | Owner or admin |
 | | `PUT /api/claims/{id}/review` | Admin |
-| **Customers** | `GET /api/admin/customers?search=&isActive=` | Admin |
+| **Customers** (gateway BFF) | `GET /api/admin/customers?search=&isActive=` | Admin |
 | | `PUT /api/admin/customers/{id}/active` | Admin |
+
+Services also expose `/internal/*` endpoints for each other (for example `GET /internal/plans?ids=`). The gateway never routes them, so they are not reachable from outside.
 
 ## Testing
 
-Unit tests cover the business logic with in-memory fakes, so no database is needed:
+Unit tests cover the business logic with in-memory fakes of the repositories and of the other services' clients, so no database, broker or other service is needed. There is one test project per service, plus architecture tests that guard the service boundaries:
 
 ```bash
-dotnet test InsuranceApi.Tests
+dotnet test Insurance.sln
 ```
 
 | Test class | Covers |
@@ -273,54 +299,56 @@ dotnet test InsuranceApi.Tests
 | `RatingStrategyTests` | Prices for every policy type, underwriting declines, answer validation |
 | `ClaimStatusTransitionsTests` | Every allowed and blocked workflow move |
 | `AuthServiceTests` | Password hashing, email normalizing, role forcing, inactive users |
-| `EnrollmentServiceTests` | Start-date window, payment alert thresholds, ownership, cancellation |
-| `ClaimServiceTests` | Review rules, the concurrency guard, claim visibility |
+| `EnrollmentServiceTests` | Start-date window, payment alerts, ownership, cancellation, the enrollment saga (completed, still running, failed, quote released), degradation when Billing is down |
+| `ClaimServiceTests` | Review rules, the concurrency guard, claim visibility, claim eligibility, names and plans from other services |
+| `PaymentServiceTests` | Ownership, already paid, cancelled, pending and expired policies |
+| `InternalQuotesControllerTests` | A quote can only be reserved for the caller |
+| `ServiceBoundaryTests` | No service references another's implementation, and no service's SQL touches another service's schema |
 
-The data layer (stored procedures and repositories) is verified through Swagger and the demo data rather than automated integration tests.
+The stored procedures, the saga over RabbitMQ and the gateway were verified end to end with Docker Compose: a scripted run of 95 requests returns the same responses as the original single API, and the saga recovers when Billing is stopped and restarted, and compensates when Billing keeps failing.
 
 ## Project structure
 
 ```
 insurance-management-system/
-├── database/                  SQL scripts 01-12 (schema, procedures, views, seed data)
-├── InsuranceApi/              ASP.NET Core Web API
-│   ├── Controllers/           HTTP layer: routing, authorization, status codes
-│   ├── Services/              Business rules (auth, quotes, enrollments, payments, claims, customers)
-│   ├── Repositories/          ADO.NET data access, one per aggregate
-│   ├── Rating/                Rating engine: strategies per policy type, answer validation
-│   ├── Models/                Domain and read models
-│   ├── DTOs/                  Request and response shapes for the API
-│   ├── Enums/                 UserRole, PolicyType, statuses, PaymentAlert
-│   ├── Exceptions/            Typed exceptions and the central ApiExceptionHandler
-│   └── Data/                  Connection factory and ADO.NET helpers
-├── InsuranceApi.Tests/        xUnit tests and in-memory fakes
-├── insurance-web/             Angular client
+├── Insurance.sln
+├── src/
+│   ├── Gateway/Insurance.Gateway/   API gateway + BFF: YARP routes, JWT and active-account check, /api/admin/customers
+│   ├── BuildingBlocks/              Shared plumbing: hosting defaults, JWT, database migrator, HTTP clients, messaging, outbox
+│   └── Services/                    One folder per microservice
+│       ├── Identity/                Users, sign-in, JWT
+│       ├── Catalog/                 Plans
+│       ├── Quotes/                  Rating engine and quotes
+│       ├── Enrollments/             Policies and the enrollment saga
+│       ├── Billing/                 Premium schedules and payments
+│       └── Claims/                  Claims and the review workflow
+│           ├── Insurance.Claims/            The service: Program.cs, Controllers, Services, Repositories,
+│           │                                Messaging (consumers), Database/ (its own SQL scripts)
+│           └── Insurance.Claims.Contracts/  What other services may use: events, internal API shapes, HTTP client
+├── tests/                           xUnit tests per service, plus Insurance.Architecture.Tests
+├── deploy/
+│   ├── docker-compose.yml           SQL Server, RabbitMQ, six services, gateway
+│   ├── Dockerfile                   One image recipe for every service
+│   └── seed/                        Dev-only demo data
+├── insurance-web/                   Angular client
 │   └── src/app/
-│       ├── core/              Services, models, guards, interceptor, utilities
-│       ├── features/          auth, dashboard, policies, enrollments, payments, claims, customers
-│       └── layout/            App shell and navigation
-└── docs/                      Architecture document and screenshots
+│       ├── core/                    Services, models, guards, interceptor, utilities
+│       ├── features/                auth, dashboard, policies, enrollments, payments, claims, customers
+│       └── layout/                  App shell and navigation
+└── docs/                            Architecture document and screenshots
 ```
 
 ## Deploying to Azure
 
-The API and the Angular build each run on an Azure App Service, with an Azure SQL Database behind the API.
+The containers built by `deploy/Dockerfile` run on **Azure Container Apps** (or AKS), one container app per service plus the gateway:
 
-1. Run the SQL scripts against the Azure SQL database (remove the `USE` line).
-2. Set these **Application settings** on the API's App Service (these override `appsettings.json`):
+1. Create one **Azure SQL database per service** (`InsuranceIdentity`, `InsuranceCatalog`, `InsuranceQuotes`, `InsuranceEnrollments`, `InsuranceBilling`, `InsuranceClaims`). The services create their tables on first start.
+2. Provide the event bus: RabbitMQ in a container app, or switch `Insurance.BuildingBlocks/Messaging/Messaging.cs` to Azure Service Bus (`UsingAzureServiceBus`, one line in MassTransit).
+3. Push the images to Azure Container Registry. Give only the **gateway** external ingress; the six services get internal ingress, so they are reachable only from inside the environment.
+4. Set each container's settings as in `deploy/docker-compose.yml`: its own `ConnectionStrings__Database`, the shared `Jwt__Key` (from Key Vault), `RabbitMq__*`, `Services__*` and, for the gateway, the `ReverseProxy__Clusters__*` addresses and `Cors__AllowedOrigins__0`.
+5. Point `apiUrl` in `insurance-web/src/environments/environment.ts` (the production build) at the gateway, run `ng build`, and host the output (for example Azure Static Web Apps). Angular's client-side routes need a fallback to `index.html`.
 
-   | Name | Value |
-   |---|---|
-   | `ConnectionStrings__InsuranceDb` | Azure SQL connection string |
-   | `Jwt__Key` | A long random secret |
-   | `Jwt__Issuer`, `Jwt__Audience` | Same as in `appsettings.json` |
-   | `Cors__AllowedOrigins__0` | The deployed frontend's origin, with no trailing slash |
-
-3. Point `API_URL` in `src/app/core/api.config.ts` at the deployed API, then run `ng build` and deploy the output.
-4. Angular's client-side routes need a fallback to `index.html` on the web host.
-5. Allow the App Service to reach the SQL server in the Azure SQL firewall settings.
-
-Swagger is enabled only in the Development environment. Set `ASPNETCORE_ENVIRONMENT=Development` on the App Service only if you want it exposed on the hosted copy.
+The previous single-API deployment used one database. Its data is not migrated automatically; the services start with empty databases (plus the plan catalog).
 
 ## Known limitations
 
@@ -328,9 +356,12 @@ Swagger is enabled only in the Development environment. Set `ASPNETCORE_ENVIRONM
 - **Illustrative pricing.** Rating multipliers are hard-coded in the strategy classes. They are not actuarial data and cannot be edited from the UI.
 - **UTC date rules.** "Today" is evaluated in UTC, with slack in the enrollment window and a grace period on overdue premiums to cover time-zone differences.
 - **Token storage.** The JWT is kept in `localStorage` with no refresh-token flow. Production systems often use httpOnly cookies.
-- **Per-request account check.** The API checks that the account is active and the role unchanged on every request. This is simple and immediate, but adds one small database lookup per call.
+- **Per-request account check.** The gateway asks the Identity service, on every request, whether the account is still active with the same role. Deactivation is immediate, but it costs one internal HTTP call per request.
+- **Eventual consistency.** The premium schedule is created by Billing a moment after the enrollment is saved, and unpaid installments are removed a moment after a cancellation. The API hides both gaps (it waits for the saga, and treats a cancelled policy's unpaid installments as gone), but other services' views of each other can briefly lag.
+- **Shared JWT key.** All services validate tokens with one symmetric key. Asymmetric keys (Identity signs, everyone else only verifies) would be stronger.
+- **Synchronous queries between services.** Claims needs Enrollments, Billing, Catalog and Identity to be up to file a claim. Policy cards degrade gracefully without Billing; other screens return `503` if a service they need is down.
 - **No pagination, file attachments or notifications** (email or push) yet.
-- **Test scope.** Business logic is unit-tested. There are no frontend or database integration tests.
+- **Test scope.** Business logic is unit-tested. The end-to-end run with Docker Compose is a script, not yet part of an automated pipeline. There are no frontend tests.
 - **Single admin role** with no admin-management screen. Admins are promoted by SQL.
 
 ## Roadmap
@@ -340,12 +371,14 @@ Swagger is enabled only in the Development environment. Set `ASPNETCORE_ENVIRONM
 - A "My quotes" screen and admin dashboard statistics
 - Claim attachments and email notifications
 - Refresh tokens or httpOnly cookie sessions
-- Integration tests against a real database, and a GitHub Actions CI pipeline
+- A GitHub Actions pipeline that builds the images and runs the end-to-end suite against Docker Compose
+- Distributed tracing (OpenTelemetry) across the gateway, services and the bus
+- Asymmetric JWT signing, and a refresh-token flow
 
 ## Documentation
 
-- [Architecture document](docs/ARCHITECTURE.md): diagrams, data model, workflows, rating engine, security, **error-number registry**
-- Swagger UI at `/swagger` for the live API reference
+- [Architecture document](docs/ARCHITECTURE.md): services, the enrollment saga, the outbox, data model, workflows, rating engine, security, **error-number registry**
+- Each service's Swagger UI at `/swagger` (Development environment)
 
 ## Author
 

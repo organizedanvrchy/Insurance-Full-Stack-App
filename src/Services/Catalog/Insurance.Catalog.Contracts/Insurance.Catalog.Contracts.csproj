@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- What other services may use from the Catalog service: its events, its internal API's shapes,
+       and a typed HTTP client for that API. Never its implementation. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Insurance.BuildingBlocks\Insurance.BuildingBlocks.csproj" />
+  </ItemGroup>
+
+</Project>

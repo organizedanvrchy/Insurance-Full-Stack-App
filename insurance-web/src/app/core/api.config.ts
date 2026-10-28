@@ -1,4 +1,5 @@
-// Run the API with:  dotnet run --urls http://localhost:5080
+// The backend is reached through its API gateway (http://localhost:5080 locally):
+//   docker compose -f deploy/docker-compose.yml up --build
 
 import { environment } from "../../environments/environment";
 

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- The Catalog microservice: its own process, its own database (InsuranceCatalog).
+       It may reference BuildingBlocks and other services' *.Contracts projects, never their implementation. -->
+
+  <PropertyGroup>
+    <UserSecretsId>insurance-catalog-service</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Run by DatabaseMigrator at startup. -->
+    <EmbeddedResource Include="Database\*.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Insurance.BuildingBlocks\Insurance.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\Insurance.Catalog.Contracts\Insurance.Catalog.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

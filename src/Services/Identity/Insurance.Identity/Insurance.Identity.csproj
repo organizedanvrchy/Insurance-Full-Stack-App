@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- The Identity microservice: its own process, its own database (InsuranceIdentity).
+       It may reference BuildingBlocks and other services' *.Contracts projects, never their implementation. -->
+
+  <PropertyGroup>
+    <UserSecretsId>insurance-identity-service</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Run by DatabaseMigrator at startup. -->
+    <EmbeddedResource Include="Database\*.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Insurance.BuildingBlocks\Insurance.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\Insurance.Identity.Contracts\Insurance.Identity.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>
