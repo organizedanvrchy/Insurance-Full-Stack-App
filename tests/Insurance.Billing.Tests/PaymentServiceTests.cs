@@ -7,7 +7,7 @@ using Xunit;
 
 namespace Insurance.Billing.Tests;
 
-// The rules that need another module's data (ownership, enrollment status) live in PaymentService.
+// The rules that need another service's data (ownership, enrollment status) live in PaymentService.
 // "Pay in order" and the double-click guard stay in usp_Payment_Pay, where the row is locked.
 
 public class PaymentServiceTests
@@ -58,9 +58,28 @@ public class PaymentServiceTests
     }
 
     [Fact]
-    public async Task A_cancelled_policy_takes_no_payments()
+    public async Task A_cancelled_policys_unpaid_installments_are_gone_even_before_billing_hears_about_it()
     {
+        // EnrollmentCancelled may not have been processed yet, so the row can still exist here.
         SetEnrollment(EnrollmentStatus.Cancelled);
+
+        await Assert.ThrowsAsync<PaymentNotFoundException>(() => _sut.PayAsync(100, userId: 1));
+        Assert.Empty((await _sut.GetScheduleAsync(10, userId: 1, isAdmin: false))!);
+    }
+
+    [Fact]
+    public async Task A_cancelled_policy_keeps_its_paid_installments_as_history()
+    {
+        _repo.Payments.Single().PaidDate = Today;
+        SetEnrollment(EnrollmentStatus.Cancelled);
+
+        Assert.Single((await _sut.GetScheduleAsync(10, userId: 1, isAdmin: false))!);
+    }
+
+    [Fact]
+    public async Task A_policy_still_being_set_up_takes_no_payments()
+    {
+        SetEnrollment(EnrollmentStatus.Pending);
 
         await Assert.ThrowsAsync<PaymentConflictException>(() => _sut.PayAsync(100, userId: 1));
         Assert.Null(_repo.LastPaid);

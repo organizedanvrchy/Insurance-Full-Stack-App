@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Modules\Identity\Insurance.Identity\Insurance.Identity.csproj" />
+    <ProjectReference Include="..\..\src\Services\Identity\Insurance.Identity\Insurance.Identity.csproj" />
   </ItemGroup>
 
 </Project>

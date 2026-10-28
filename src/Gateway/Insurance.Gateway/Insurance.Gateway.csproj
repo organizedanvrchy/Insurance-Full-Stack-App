@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- API gateway + BFF: the only public entry point. Routes /api/* to the services (YARP), checks every
+       caller's JWT and that their account is still active, and composes the screens that need several services. -->
+
+  <PropertyGroup>
+    <UserSecretsId>insurance-gateway</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Yarp.ReverseProxy" Version="2.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\BuildingBlocks\Insurance.BuildingBlocks\Insurance.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\..\Services\Identity\Insurance.Identity.Contracts\Insurance.Identity.Contracts.csproj" />
+    <ProjectReference Include="..\..\Services\Enrollments\Insurance.Enrollments.Contracts\Insurance.Enrollments.Contracts.csproj" />
+    <ProjectReference Include="..\..\Services\Claims\Insurance.Claims.Contracts\Insurance.Claims.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

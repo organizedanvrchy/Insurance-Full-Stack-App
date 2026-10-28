@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- The Billing microservice: its own process, its own database (InsuranceBilling).
+       It may reference BuildingBlocks and other services' *.Contracts projects, never their implementation. -->
+
+  <PropertyGroup>
+    <UserSecretsId>insurance-billing-service</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Run by DatabaseMigrator at startup. -->
+    <EmbeddedResource Include="Database\*.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Insurance.BuildingBlocks\Insurance.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\Insurance.Billing.Contracts\Insurance.Billing.Contracts.csproj" />
+    <ProjectReference Include="..\..\Enrollments\Insurance.Enrollments.Contracts\Insurance.Enrollments.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

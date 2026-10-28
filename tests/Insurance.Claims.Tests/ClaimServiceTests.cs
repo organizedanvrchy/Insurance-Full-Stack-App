@@ -17,7 +17,7 @@ public class ClaimServiceTests
 
     private readonly FakeClaimRepository _repo = new();
     private readonly FakeEnrollmentLookup _enrollments = new();
-    private readonly FakePremiumSchedule _premiums = new();
+    private readonly FakePremiumSummaries _premiums = new();
     private readonly FakeUserDirectory _users = new();
     private readonly ClaimService _sut;
 
@@ -202,7 +202,7 @@ public class ClaimServiceTests
     }
 
     [Fact]
-    public async Task Claims_show_the_plan_and_the_customer_and_reviewer_names_from_the_other_modules()
+    public async Task Claims_show_the_plan_and_the_customer_and_reviewer_names_from_the_other_services()
     {
         AddClaim(ClaimStatus.Submitted, ownerId: 1);
 

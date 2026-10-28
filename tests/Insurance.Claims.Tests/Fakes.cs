@@ -10,7 +10,7 @@ using Insurance.Identity.Contracts;
 namespace Insurance.Claims.Tests;
 
 // Fakes are tiny in-memory stand-ins for the 
-// real repositories and for the other modules' contracts.
+// real repositories and for the other services' contracts.
 // The services only know the interfaces, so they 
 // can't tell the difference. That's dependency injection 
 // paying off: no database, no Azure, tests run in milliseconds.
@@ -69,7 +69,7 @@ public class FakeClaimRepository : IClaimRepository
                 g.Count(), g.Count(c => c.Status is ClaimStatus.Submitted or ClaimStatus.UnderReview))));
 }
 
-// The other modules, as the Claims module sees them through their contracts.
+// The other services, as the Claims service sees them through their contracts (HTTP clients in production).
 
 public class FakeEnrollmentLookup : IEnrollmentLookup
 {
@@ -86,18 +86,13 @@ public class FakeEnrollmentLookup : IEnrollmentLookup
         throw new NotSupportedException();
 }
 
-public class FakePremiumSchedule : IPremiumSchedule
+public class FakePremiumSummaries : IPremiumSummaries
 {
     public HashSet<int> Overdue { get; } = new();
 
     public Task<IReadOnlyDictionary<int, PremiumSummary>> GetSummariesAsync(IEnumerable<int> enrollmentIds) =>
         Task.FromResult<IReadOnlyDictionary<int, PremiumSummary>>(enrollmentIds.Distinct().ToDictionary(
             id => id, id => new PremiumSummary(0, 12, Overdue.Contains(id) ? 1 : 0, null, null)));
-
-    public Task CreateAsync(int enrollmentId, DateOnly startDate, int termMonths, decimal monthlyPremium) =>
-        throw new NotSupportedException();
-
-    public Task RemoveUnpaidAsync(int enrollmentId) => throw new NotSupportedException();
 }
 
 public class FakePlanCatalog : IPlanCatalog

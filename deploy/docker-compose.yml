@@ -1,0 +1,154 @@
+# The whole system on one machine: SQL Server, RabbitMQ, the six services and the gateway.
+#   cp deploy/.env.example deploy/.env      (then edit it)
+#   docker compose -f deploy/docker-compose.yml up --build
+# The API is then at http://localhost:5080/api. The gateway is the only service with a published port;
+# SQL Server and RabbitMQ publish theirs for local tools. Each service creates its own database on first start.
+
+x-service: &service
+  build:
+    context: ..
+    dockerfile: deploy/Dockerfile
+  restart: unless-stopped
+  depends_on:
+    sqlserver: { condition: service_healthy }
+    rabbitmq: { condition: service_healthy }
+
+x-common-env: &common-env
+  Jwt__Key: ${JWT_KEY:?set JWT_KEY in deploy/.env}
+  RabbitMq__Host: rabbitmq
+
+services:
+  sqlserver:
+    # One SQL Server instance hosting six separate databases, one per service.
+    # In Azure each would be its own Azure SQL database.
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${SA_PASSWORD:?set SA_PASSWORD in deploy/.env}
+    ports:
+      - "1433:1433"       # for SQL tools, and for running a service outside Docker
+    volumes:
+      - sqldata:/var/opt/mssql
+      - ./seed:/seed:ro
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' || exit 1"]
+      interval: 5s
+      retries: 30
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    ports:
+      - "5672:5672"       # for running a service outside Docker
+      - "15672:15672"     # management UI (guest / guest)
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      retries: 30
+
+  identity:
+    <<: *service
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      args:
+        PROJECT: src/Services/Identity/Insurance.Identity/Insurance.Identity.csproj
+        ASSEMBLY: Insurance.Identity
+    environment:
+      <<: *common-env
+      ConnectionStrings__Database: Server=sqlserver;Database=InsuranceIdentity;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True;
+
+  catalog:
+    <<: *service
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      args:
+        PROJECT: src/Services/Catalog/Insurance.Catalog/Insurance.Catalog.csproj
+        ASSEMBLY: Insurance.Catalog
+    environment:
+      <<: *common-env
+      ConnectionStrings__Database: Server=sqlserver;Database=InsuranceCatalog;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True;
+
+  quotes:
+    <<: *service
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      args:
+        PROJECT: src/Services/Quotes/Insurance.Quotes/Insurance.Quotes.csproj
+        ASSEMBLY: Insurance.Quotes
+    environment:
+      <<: *common-env
+      ConnectionStrings__Database: Server=sqlserver;Database=InsuranceQuotes;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True;
+      Services__Catalog: http://catalog:8080/
+
+  enrollments:
+    <<: *service
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      args:
+        PROJECT: src/Services/Enrollments/Insurance.Enrollments/Insurance.Enrollments.csproj
+        ASSEMBLY: Insurance.Enrollments
+    environment:
+      <<: *common-env
+      ConnectionStrings__Database: Server=sqlserver;Database=InsuranceEnrollments;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True;
+      Services__Catalog: http://catalog:8080/
+      Services__Quotes: http://quotes:8080/
+      Services__Billing: http://billing:8080/
+
+  billing:
+    <<: *service
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      args:
+        PROJECT: src/Services/Billing/Insurance.Billing/Insurance.Billing.csproj
+        ASSEMBLY: Insurance.Billing
+    environment:
+      <<: *common-env
+      ConnectionStrings__Database: Server=sqlserver;Database=InsuranceBilling;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True;
+      Services__Enrollments: http://enrollments:8080/
+
+  claims:
+    <<: *service
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      args:
+        PROJECT: src/Services/Claims/Insurance.Claims/Insurance.Claims.csproj
+        ASSEMBLY: Insurance.Claims
+    environment:
+      <<: *common-env
+      ConnectionStrings__Database: Server=sqlserver;Database=InsuranceClaims;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True;
+      Services__Identity: http://identity:8080/
+      Services__Catalog: http://catalog:8080/
+      Services__Enrollments: http://enrollments:8080/
+      Services__Billing: http://billing:8080/
+
+  gateway:
+    <<: *service
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      args:
+        PROJECT: src/Gateway/Insurance.Gateway/Insurance.Gateway.csproj
+        ASSEMBLY: Insurance.Gateway
+    depends_on: [identity, catalog, quotes, enrollments, billing, claims]
+    ports:
+      - "5080:8080"
+    environment:
+      Jwt__Key: ${JWT_KEY}
+      Cors__AllowedOrigins__0: http://localhost:4200
+      Services__Identity: http://identity:8080/
+      Services__Enrollments: http://enrollments:8080/
+      Services__Claims: http://claims:8080/
+      ReverseProxy__Clusters__identity__Destinations__d1__Address: http://identity:8080/
+      ReverseProxy__Clusters__catalog__Destinations__d1__Address: http://catalog:8080/
+      ReverseProxy__Clusters__quotes__Destinations__d1__Address: http://quotes:8080/
+      ReverseProxy__Clusters__enrollments__Destinations__d1__Address: http://enrollments:8080/
+      ReverseProxy__Clusters__billing__Destinations__d1__Address: http://billing:8080/
+      ReverseProxy__Clusters__claims__Destinations__d1__Address: http://claims:8080/
+
+volumes:
+  sqldata:

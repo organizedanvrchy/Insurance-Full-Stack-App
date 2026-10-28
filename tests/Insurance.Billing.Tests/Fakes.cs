@@ -7,7 +7,7 @@ using Insurance.Enrollments.Contracts;
 namespace Insurance.Billing.Tests;
 
 // Fakes are tiny in-memory stand-ins for the 
-// real repositories and for the other modules' contracts.
+// real repositories and for the other services' contracts.
 // The services only know the interfaces, so they 
 // can't tell the difference. That's dependency injection 
 // paying off: no database, no Azure, tests run in milliseconds.

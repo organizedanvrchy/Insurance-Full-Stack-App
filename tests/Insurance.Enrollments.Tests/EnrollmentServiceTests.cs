@@ -3,8 +3,11 @@ using Insurance.BuildingBlocks.Exceptions;
 using Insurance.Enrollments.Contracts;
 using Insurance.Enrollments.DTOs;
 using Insurance.Enrollments.Enums;
+using Insurance.Enrollments.Exceptions;
 using Insurance.Enrollments.Models;
 using Insurance.Enrollments.Services;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace Insurance.Enrollments.Tests;
@@ -14,14 +17,19 @@ public class EnrollmentServiceTests
     private static DateOnly Today => DateOnly.FromDateTime(DateTime.UtcNow);
 
     private readonly FakeEnrollmentRepository _repo = new();
-    private readonly FakeQuoteRedemption _quotes = new();
+    private readonly FakeQuoteReservations _quotes = new();
     private readonly FakePlanCatalog _plans = new();
-    private readonly FakePremiumSchedule _premiums = new();
+    private readonly FakePremiumSummaries _premiums = new();
     private readonly EnrollmentService _sut;
 
     public EnrollmentServiceTests()
     {
-        _sut = new EnrollmentService(_repo, _quotes, _plans, _premiums);
+        var options = Options.Create(new EnrollmentOptions
+        {
+            SagaTimeout = TimeSpan.FromMilliseconds(200),
+            SagaPollInterval = TimeSpan.FromMilliseconds(10)
+        });
+        _sut = new EnrollmentService(_repo, _quotes, _plans, _premiums, options, NullLogger<EnrollmentService>.Instance);
     }
 
     // Start date window
@@ -51,27 +59,17 @@ public class EnrollmentServiceTests
     }
 
     [Fact]
-    public async Task Enrolling_checks_the_quote_for_the_caller_and_takes_the_plan_and_premium_from_it()
+    public async Task Enrolling_reserves_the_quote_for_the_caller_and_takes_the_plan_and_premium_from_it()
     {
         await _sut.EnrollAsync(5, new EnrollmentRequest { QuoteId = 42, StartDate = Today });
 
-        Assert.Equal((42, 5), _quotes.LastLookup);
+        Assert.Equal((42, 5), _quotes.LastReserve);
         var created = _repo.LastCreate!.Value;
         Assert.Equal(5, created.UserId);
         Assert.Equal(1, created.PolicyId);          // from the quote
+        Assert.Equal(42, created.QuoteId);          // the saga needs it to confirm or release the quote
         Assert.Equal(100m, created.MonthlyPremium); // the quoted price, not the plan's base rate
         Assert.Equal(12, created.TermMonths);       // from the plan
-    }
-
-    [Fact]
-    public async Task Enrolling_creates_the_premium_schedule_and_uses_up_the_quote()
-    {
-        var dto = await _sut.EnrollAsync(5, new EnrollmentRequest { QuoteId = 42, StartDate = Today });
-
-        Assert.Equal(new[] { dto.EnrollmentId }, _premiums.Created);
-        Assert.Equal((42, dto.EnrollmentId), _quotes.MarkedUsed);
-        Assert.Equal("Test Plan", dto.PolicyName);
-        Assert.Equal(12, dto.PaymentsTotal);
     }
 
     [Fact]
@@ -83,49 +81,77 @@ public class EnrollmentServiceTests
         Assert.Null(_repo.LastCreate);
     }
 
+    // The enrollment saga
+
     [Fact]
-    public async Task A_plan_retired_since_the_quote_is_rejected()
+    public async Task When_the_saga_completes_the_customer_gets_the_active_policy()
+    {
+        _premiums.Summaries[100] = new PremiumSummary(0, 12, 0, Today, 100m);
+
+        var dto = await _sut.EnrollAsync(5, new EnrollmentRequest { QuoteId = 42, StartDate = Today });
+
+        Assert.Equal(EnrollmentStatus.Active, dto.Status);
+        Assert.Equal("Test Plan", dto.PolicyName);   // from the Catalog service
+        Assert.Equal(12, dto.PaymentsTotal);         // from the Billing service
+    }
+
+    [Fact]
+    public async Task If_billing_is_slow_the_customer_gets_the_pending_enrollment_instead_of_an_error()
+    {
+        _repo.SagaOutcome = null;   // stays Pending
+
+        var dto = await _sut.EnrollAsync(5, new EnrollmentRequest { QuoteId = 42, StartDate = Today });
+
+        Assert.Equal(EnrollmentStatus.Pending, dto.Status);   // the controller answers 202 Accepted
+    }
+
+    [Fact]
+    public async Task If_billing_is_down_policies_still_show_without_payment_progress()
+    {
+        _repo.Enrollments.Add(new Enrollment { EnrollmentId = 1, UserId = 1, PolicyId = 1, Status = EnrollmentStatus.Active });
+        _premiums.Unavailable = true;
+
+        var dto = (await _sut.GetMineAsync(1)).Single();
+
+        Assert.Equal("Test Plan", dto.PolicyName);
+        Assert.Equal(0, dto.PaymentsTotal);
+        Assert.Equal(PaymentAlert.None, dto.PaymentAlert);
+    }
+
+    [Fact]
+    public async Task If_the_saga_failed_enrolling_fails()
+    {
+        _repo.SagaOutcome = EnrollmentStatus.Failed;
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.EnrollAsync(5, new EnrollmentRequest { QuoteId = 42 }));
+    }
+
+    [Fact]
+    public async Task A_plan_retired_since_the_quote_releases_the_quote()
     {
         _plans.Plans[1] = _plans.Plans[1] with { IsActive = false };
 
         await Assert.ThrowsAsync<BusinessRuleException>(() => _sut.EnrollAsync(1, new EnrollmentRequest { QuoteId = 7 }));
         Assert.Null(_repo.LastCreate);
-    }
-
-    // Compensation: a failure after the enrollment row exists undoes the earlier steps
-
-    [Fact]
-    public async Task If_billing_fails_the_enrollment_is_removed_and_the_quote_stays_usable()
-    {
-        _premiums.FailCreate = true;
-
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.EnrollAsync(1, new EnrollmentRequest { QuoteId = 7 }));
-
-        Assert.Empty(_repo.Enrollments);
-        Assert.Single(_repo.Deleted);
-        Assert.Null(_quotes.MarkedUsed);
+        Assert.Equal(new[] { 7 }, _quotes.Released);
     }
 
     [Fact]
-    public async Task If_the_quote_was_used_meanwhile_the_enrollment_and_its_schedule_are_removed()
+    public async Task A_duplicate_enrollment_releases_the_quote()
     {
-        _quotes.FailMarkUsed = true;
-
-        await Assert.ThrowsAsync<ConflictException>(() => _sut.EnrollAsync(1, new EnrollmentRequest { QuoteId = 7 }));
-
-        Assert.Empty(_repo.Enrollments);
-        Assert.Equal(_repo.Deleted, _premiums.RemovedUnpaid);
-    }
-
-    [Fact]
-    public async Task A_missing_start_date_defaults_to_today()
-    {
-        var before = Today;
         await _sut.EnrollAsync(1, new EnrollmentRequest { QuoteId = 7 });
-        var after = Today;
 
-        var used = _repo.LastCreate!.Value.StartDate;
-        Assert.True(used == before || used == after);   // tolerates the clock ticking past midnight mid-test
+        await Assert.ThrowsAsync<DuplicateEnrollmentException>(() => _sut.EnrollAsync(1, new EnrollmentRequest { QuoteId = 8 }));
+        Assert.Equal(new[] { 8 }, _quotes.Released);
+    }
+
+    [Fact]
+    public async Task A_pending_enrollment_already_blocks_a_second_one_for_the_same_plan()
+    {
+        _repo.SagaOutcome = null;
+        await _sut.EnrollAsync(1, new EnrollmentRequest { QuoteId = 7 });
+
+        await Assert.ThrowsAsync<DuplicateEnrollmentException>(() => _sut.EnrollAsync(1, new EnrollmentRequest { QuoteId = 8 }));
     }
 
     // Payment alerts
@@ -214,7 +240,7 @@ public class EnrollmentServiceTests
 
         Assert.True(await _sut.CancelAsync(1, userId: 1));
         Assert.Equal(EnrollmentStatus.Cancelled, _repo.Enrollments.Single().Status);
-        Assert.Equal(new[] { 1 }, _premiums.RemovedUnpaid);   // Billing drops the unpaid installments
+        Assert.Equal(new[] { 1 }, _repo.CancelledEvents);   // Billing hears about it and drops the unpaid installments
     }
 
     [Fact]
@@ -224,6 +250,6 @@ public class EnrollmentServiceTests
 
         Assert.False(await _sut.CancelAsync(1, userId: 2));
         Assert.Equal(EnrollmentStatus.Active, _repo.Enrollments.Single().Status);
-        Assert.Empty(_premiums.RemovedUnpaid);
+        Assert.Empty(_repo.CancelledEvents);
     }
 }

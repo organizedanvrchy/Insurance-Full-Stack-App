@@ -14,8 +14,9 @@ public class SqlConnectionFactory : IDbConnectionFactory
 
     public SqlConnectionFactory(IConfiguration config)
     {
-        _connectionString = config.GetConnectionString("InsuranceDb")
-            ?? throw new InvalidOperationException("Connection string 'InsuranceDb' is missing.");
+        // Every service has its own database, always under this name in its own configuration.
+        _connectionString = config.GetConnectionString("Database")
+            ?? throw new InvalidOperationException("Connection string 'Database' is missing.");
     }
 
     // A new connection per operation. ADO.NET pools them under the hood, so this is cheap.

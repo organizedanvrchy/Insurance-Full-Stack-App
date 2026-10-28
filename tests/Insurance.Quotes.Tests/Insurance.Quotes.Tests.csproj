@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Modules\Quotes\Insurance.Quotes\Insurance.Quotes.csproj" />
+    <ProjectReference Include="..\..\src\Services\Quotes\Insurance.Quotes\Insurance.Quotes.csproj" />
   </ItemGroup>
 
 </Project>

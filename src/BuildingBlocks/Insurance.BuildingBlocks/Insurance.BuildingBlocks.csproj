@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Plumbing every module shares: ADO.NET helpers, base exceptions and their HTTP mapping, role names.
+  <!-- Plumbing every service shares: hosting defaults, JWT validation, ADO.NET helpers and the database migrator,
+       service-to-service HTTP, messaging and the outbox, base exceptions and their HTTP mapping.
        No business rules live here. -->
 
   <ItemGroup>
@@ -8,9 +9,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="MassTransit.RabbitMQ" Version="8.5.12" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.12" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="7.1.1" />
     <!-- Pinned above the vulnerable version SqlClient pulls in transitively. -->
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="9.0.21" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0" />
   </ItemGroup>
 
 </Project>
