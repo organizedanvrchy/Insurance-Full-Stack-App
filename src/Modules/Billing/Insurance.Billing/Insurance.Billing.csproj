@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- A module may reference BuildingBlocks and other modules' *.Contracts projects, never their implementation. -->
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Insurance.BuildingBlocks\Insurance.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\Insurance.Billing.Contracts\Insurance.Billing.Contracts.csproj" />
+    <ProjectReference Include="..\..\Enrollments\Insurance.Enrollments.Contracts\Insurance.Enrollments.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

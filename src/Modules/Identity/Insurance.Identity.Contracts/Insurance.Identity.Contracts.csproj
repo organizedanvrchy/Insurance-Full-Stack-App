@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The only part of this module other modules may reference. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Insurance.BuildingBlocks\Insurance.BuildingBlocks.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -116,7 +116,9 @@ flowchart TD
     P --> T[("Tables and views")]
 ```
 
-Each layer only knows the one below it, through interfaces registered with dependency injection. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for sequence diagrams, the ER diagram, the claim workflow, the rating engine, the security model and the complete error-number registry.
+Each layer only knows the one below it, through interfaces registered with dependency injection.
+
+The API is a **modular monolith**: one deployable host made of six modules (Identity, Catalog, Quotes, Enrollments, Billing, Claims), each in its own project. A module may use another module only through that module's `*.Contracts` project, and `Insurance.Architecture.Tests` fails the build if one reaches into another's implementation. This keeps every module ready to be extracted into its own service. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for sequence diagrams, the ER diagram, the claim workflow, the rating engine, the security model and the complete error-number registry.
 
 ## Key business rules
 
@@ -171,7 +173,7 @@ Run the scripts in `database/` **in numeric order** (VS Code with the mssql exte
 ### 3. Configure and run the API
 
 ```bash
-cd InsuranceApi
+cd src/Host/Insurance.Api
 dotnet restore
 dotnet user-secrets init
 dotnet user-secrets set "Jwt:Key" "replace-with-at-least-32-random-characters"
@@ -262,10 +264,10 @@ Interactive documentation is in Swagger. Statuses follow REST conventions: `201`
 
 ## Testing
 
-Unit tests cover the business logic with in-memory fakes, so no database is needed:
+Unit tests cover the business logic with in-memory fakes, so no database is needed. There is one test project per module, plus architecture tests that guard the module boundaries:
 
 ```bash
-dotnet test InsuranceApi.Tests
+dotnet test Insurance.sln
 ```
 
 | Test class | Covers |
@@ -275,6 +277,7 @@ dotnet test InsuranceApi.Tests
 | `AuthServiceTests` | Password hashing, email normalizing, role forcing, inactive users |
 | `EnrollmentServiceTests` | Start-date window, payment alert thresholds, ownership, cancellation |
 | `ClaimServiceTests` | Review rules, the concurrency guard, claim visibility |
+| `ModuleBoundaryTests` | No module references another module's implementation, only its `*.Contracts` |
 
 The data layer (stored procedures and repositories) is verified through Swagger and the demo data rather than automated integration tests.
 
@@ -282,18 +285,21 @@ The data layer (stored procedures and repositories) is verified through Swagger 
 
 ```
 insurance-management-system/
-├── database/                  SQL scripts 01-12 (schema, procedures, views, seed data)
-├── InsuranceApi/              ASP.NET Core Web API
-│   ├── Controllers/           HTTP layer: routing, authorization, status codes
-│   ├── Services/              Business rules (auth, quotes, enrollments, payments, claims, customers)
-│   ├── Repositories/          ADO.NET data access, one per aggregate
-│   ├── Rating/                Rating engine: strategies per policy type, answer validation
-│   ├── Models/                Domain and read models
-│   ├── DTOs/                  Request and response shapes for the API
-│   ├── Enums/                 UserRole, PolicyType, statuses, PaymentAlert
-│   ├── Exceptions/            Typed exceptions and the central ApiExceptionHandler
-│   └── Data/                  Connection factory and ADO.NET helpers
-├── InsuranceApi.Tests/        xUnit tests and in-memory fakes
+├── Database/                  SQL scripts 01-12 (schema, procedures, views, seed data)
+├── Insurance.sln
+├── src/
+│   ├── Host/Insurance.Api/    The one deployable: Program.cs composes the modules, auth, CORS, Swagger
+│   ├── BuildingBlocks/        ADO.NET helpers, base exceptions + ApiExceptionHandler, role names
+│   └── Modules/               One folder per future microservice
+│       ├── Identity/          Users, sign-in, JWT, customer admin
+│       ├── Catalog/           Plans
+│       ├── Quotes/            Rating engine and quotes
+│       ├── Enrollments/       Policies a customer holds
+│       ├── Billing/           Premium schedules and payments
+│       └── Claims/            Claims and the review workflow
+│           ├── Insurance.Claims/            Controllers, Services, Repositories, Models, DTOs, Enums, Exceptions
+│           └── Insurance.Claims.Contracts/  The only part other modules may reference
+├── tests/                     xUnit tests per module, plus Insurance.Architecture.Tests
 ├── insurance-web/             Angular client
 │   └── src/app/
 │       ├── core/              Services, models, guards, interceptor, utilities
