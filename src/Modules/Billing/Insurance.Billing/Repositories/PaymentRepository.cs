@@ -1,9 +1,9 @@
 using System.Data;
+using Insurance.Billing.Contracts;
 using Insurance.Billing.Enums;
 using Insurance.Billing.Exceptions;
 using Insurance.Billing.Models;
 using Insurance.BuildingBlocks.Data;
-using Insurance.BuildingBlocks.Exceptions;
 using Microsoft.Data.SqlClient;
 
 namespace Insurance.Billing.Repositories;
@@ -16,7 +16,7 @@ public class PaymentRepository : IPaymentRepository
     public async Task<List<Payment>> GetByEnrollmentAsync(int enrollmentId)
     {
         await using var conn = _db.Create();
-        await using var cmd = conn.StoredProc("dbo.usp_Payment_GetByEnrollment");
+        await using var cmd = conn.StoredProc("billing.usp_Payment_GetByEnrollment");
         cmd.AddParam("@EnrollmentId", SqlDbType.Int, enrollmentId);
 
         await conn.OpenAsync();
@@ -26,12 +26,22 @@ public class PaymentRepository : IPaymentRepository
         return list;
     }
 
-    public async Task<Payment> PayAsync(int paymentId, int userId)
+    public async Task<Payment?> GetByIdAsync(int paymentId)
     {
         await using var conn = _db.Create();
-        await using var cmd = conn.StoredProc("dbo.usp_Payment_Pay");
+        await using var cmd = conn.StoredProc("billing.usp_Payment_GetById");
         cmd.AddParam("@PaymentId", SqlDbType.Int, paymentId);
-        cmd.AddParam("@UserId", SqlDbType.Int, userId);
+
+        await conn.OpenAsync();
+        await using var reader = await cmd.ExecuteReaderAsync();
+        return await reader.ReadAsync() ? Map(reader) : null;
+    }
+
+    public async Task<Payment> PayAsync(int paymentId)
+    {
+        await using var conn = _db.Create();
+        await using var cmd = conn.StoredProc("billing.usp_Payment_Pay");
+        cmd.AddParam("@PaymentId", SqlDbType.Int, paymentId);
 
         await conn.OpenAsync();
         try
@@ -41,24 +51,66 @@ public class PaymentRepository : IPaymentRepository
                 throw new InvalidOperationException("usp_Payment_Pay returned no row.");
             return Map(reader);
         }
-        // 50004 = not found OR not yours (the proc deliberately doesn't say which)
         catch (SqlException ex) when (ex.Number == 50004)
         {
             throw new PaymentNotFoundException(paymentId);
         }
-        // 50005 already paid, 50006 enrollment not active, 50007 earlier installment unpaid.
+        // 50005 already paid, 50007 earlier installment unpaid.
         // The proc's THROW message is already user-friendly, so we pass it along.
-        catch (SqlException ex) when (ex.Number is 50005 or 50006 or 50007)
+        catch (SqlException ex) when (ex.Number is 50005 or 50007)
         {
             throw new PaymentConflictException(ex.Message);
         }
+    }
+
+    public async Task CreateScheduleAsync(int enrollmentId, DateOnly startDate, int termMonths, decimal monthlyPremium)
+    {
+        await using var conn = _db.Create();
+        await using var cmd = conn.StoredProc("billing.usp_Premium_CreateSchedule");
+        cmd.AddParam("@EnrollmentId",   SqlDbType.Int, enrollmentId);
+        cmd.AddParam("@StartDate",      SqlDbType.Date, startDate.ToDateTime(TimeOnly.MinValue));
+        cmd.AddParam("@TermMonths",     SqlDbType.Int, termMonths);
+        cmd.AddParam("@MonthlyPremium", SqlDbType.Decimal, monthlyPremium, precision: 18, scale: 2);
+
+        await conn.OpenAsync();
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    public async Task RemoveUnpaidAsync(int enrollmentId)
+    {
+        await using var conn = _db.Create();
+        await using var cmd = conn.StoredProc("billing.usp_Premium_RemoveUnpaid");
+        cmd.AddParam("@EnrollmentId", SqlDbType.Int, enrollmentId);
+
+        await conn.OpenAsync();
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    public async Task<Dictionary<int, PremiumSummary>> GetSummariesAsync(IEnumerable<int> enrollmentIds)
+    {
+        await using var conn = _db.Create();
+        await using var cmd = conn.StoredProc("billing.usp_Premium_GetSummaries");
+        cmd.AddIdListParam("@EnrollmentIds", enrollmentIds);
+
+        await conn.OpenAsync();
+        await using var reader = await cmd.ExecuteReaderAsync();
+        var summaries = new Dictionary<int, PremiumSummary>();
+        while (await reader.ReadAsync())
+        {
+            summaries[reader.GetInt32(reader.GetOrdinal("EnrollmentId"))] = new PremiumSummary(
+                reader.GetInt32(reader.GetOrdinal("PaymentsPaid")),
+                reader.GetInt32(reader.GetOrdinal("PaymentsTotal")),
+                reader.GetInt32(reader.GetOrdinal("OverdueCount")),
+                reader.IsDBNull(reader.GetOrdinal("NextDueDate")) ? null : reader.GetDateOnly("NextDueDate"),
+                reader.IsDBNull(reader.GetOrdinal("NextDueAmount")) ? null : reader.GetDecimal(reader.GetOrdinal("NextDueAmount")));
+        }
+        return summaries;
     }
 
     private static Payment Map(SqlDataReader r) => new()
     {
         PaymentId = r.GetInt32(r.GetOrdinal("PaymentId")),
         EnrollmentId = r.GetInt32(r.GetOrdinal("EnrollmentId")),
-        UserId = r.GetInt32(r.GetOrdinal("UserId")),
         DueDate = r.GetDateOnly("DueDate"),
         Amount = r.GetDecimal(r.GetOrdinal("Amount")),
         PaidDate = r.IsDBNull(r.GetOrdinal("PaidDate")) ? null : r.GetDateOnly("PaidDate"),

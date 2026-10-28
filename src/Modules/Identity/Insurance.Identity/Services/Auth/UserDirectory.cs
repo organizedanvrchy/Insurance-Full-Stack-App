@@ -14,4 +14,7 @@ public class UserDirectory : IUserDirectory
         var u = await _users.GetByIdAsync(userId);
         return u is null ? null : new UserAccount(u.UserId, u.FullName, u.Email, u.Role, u.IsActive);
     }
+
+    public async Task<IReadOnlyDictionary<int, UserAccount>> GetManyAsync(IEnumerable<int> userIds) =>
+        (await _users.GetManyAsync(userIds)).ToDictionary(u => u.UserId);
 }

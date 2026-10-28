@@ -6,6 +6,7 @@ namespace Insurance.Identity.Contracts;
 public interface IUserDirectory
 {
     Task<UserAccount?> GetAsync(int userId);   // null => no such user
+    Task<IReadOnlyDictionary<int, UserAccount>> GetManyAsync(IEnumerable<int> userIds);
 }
 
 public record UserAccount(int UserId, string FullName, string Email, UserRole Role, bool IsActive);

@@ -1,4 +1,5 @@
 using Insurance.Billing.DTOs;
+using Insurance.Billing.Exceptions;
 using Insurance.Billing.Models;
 using Insurance.Billing.Repositories;
 using Insurance.Enrollments.Contracts;
@@ -28,9 +29,26 @@ public class PaymentService : IPaymentService
         return payments.Select(MapToDto).ToList();
     }
 
-    // Ownership and all payment rules are enforced inside usp_Payment_Pay (one transaction).
-    public async Task<PaymentDto> PayAsync(int paymentId, int userId) =>
-        MapToDto(await _payments.PayAsync(paymentId, userId));
+    // Ownership and the enrollment's status come from the Enrollments module. "Already paid" and
+    // "pay in order" are enforced again inside usp_Payment_Pay, with the row locked, against double clicks.
+    public async Task<PaymentDto> PayAsync(int paymentId, int userId)
+    {
+        var payment = await _payments.GetByIdAsync(paymentId);
+        var enrollment = payment is null ? null : await _enrollments.GetAsync(payment.EnrollmentId);
+
+        // Same answer for "doesn't exist" and "not yours", so ids can't be probed.
+        if (payment is null || enrollment is null || enrollment.UserId != userId)
+            throw new PaymentNotFoundException(paymentId);
+
+        if (payment.PaidDate is not null)
+            throw new PaymentConflictException("This installment has already been paid.");
+
+        // An Active policy past its end date reads as Expired; its last installments can still be paid.
+        if (enrollment.Status is not (EnrollmentStatus.Active or EnrollmentStatus.Expired))
+            throw new PaymentConflictException("Payments can only be made on an active enrollment.");
+
+        return MapToDto(await _payments.PayAsync(paymentId));
+    }
 
     private static PaymentDto MapToDto(Payment p) => new()
     {

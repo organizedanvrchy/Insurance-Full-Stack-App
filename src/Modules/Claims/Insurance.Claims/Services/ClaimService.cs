@@ -1,3 +1,4 @@
+using Insurance.Billing.Contracts;
 using Insurance.BuildingBlocks.Exceptions;
 using Insurance.Catalog.Contracts;
 using Insurance.Claims.DTOs;
@@ -5,34 +6,70 @@ using Insurance.Claims.Enums;
 using Insurance.Claims.Exceptions;
 using Insurance.Claims.Models;
 using Insurance.Claims.Repositories;
+using Insurance.Enrollments.Contracts;
+using Insurance.Identity.Contracts;
 
 namespace Insurance.Claims.Services;
 
 public class ClaimService : IClaimService
 {
     private readonly IClaimRepository _claims;
-    public ClaimService(IClaimRepository claims) => _claims = claims;
+    private readonly IEnrollmentLookup _enrollments;
+    private readonly IPremiumSchedule _premiums;
+    private readonly IPlanCatalog _plans;
+    private readonly IUserDirectory _users;
+
+    public ClaimService(IClaimRepository claims, IEnrollmentLookup enrollments, IPremiumSchedule premiums,
+        IPlanCatalog plans, IUserDirectory users)
+    {
+        _claims = claims;
+        _enrollments = enrollments;
+        _premiums = premiums;
+        _plans = plans;
+        _users = users;
+    }
 
     public async Task<ClaimDto> SubmitAsync(int userId, ClaimSubmitRequest request)
     {
-        // Ownership, dates, overdue premiums and coverage limits are all enforced inside usp_Claim_Submit.
+        var incidentDate = request.IncidentDate!.Value;
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        // Same answer for "doesn't exist" and "not yours", so ids can't be probed.
+        var enrollment = await _enrollments.GetAsync(request.EnrollmentId);
+        if (enrollment is null || enrollment.UserId != userId)
+            throw new NotFoundException("Enrollment not found.");
+
+        // Derived status: an Active policy past its end date is Expired.
+        if (enrollment.Status != EnrollmentStatus.Active)
+            throw new ClaimConflictException("Claims can only be filed on an active policy.");
+
+        if (incidentDate < enrollment.StartDate || incidentDate > enrollment.EndDate || incidentDate > today)
+            throw new BusinessRuleException("The incident date must fall within your coverage period and cannot be in the future.");
+
+        // Billing decides what "overdue" means, including the grace period.
+        var premiums = (await _premiums.GetSummariesAsync(new[] { enrollment.EnrollmentId }))[enrollment.EnrollmentId];
+        if (premiums.OverdueCount > 0)
+            throw new ClaimConflictException("Please pay your overdue premiums before filing a claim.");
+
+        // The remaining-coverage check needs a lock, so it runs inside usp_Claim_Submit.
+        var coverage = await CoverageOfAsync(enrollment);
         var id = await _claims.SubmitAsync(
-            userId, request.EnrollmentId, request.IncidentDate!.Value, request.Description.Trim(), request.ClaimAmount);
+            userId, enrollment.EnrollmentId, incidentDate, request.Description.Trim(), request.ClaimAmount, coverage);
 
         var created = await _claims.GetByIdAsync(id);
-        return MapToDto(created!, isAdmin: false);
+        return (await ComposeAsync(new[] { created! }, isAdmin: false)).Single();
     }
 
     public async Task<List<ClaimDto>> GetMineAsync(int userId)
     {
         var list = await _claims.GetByUserAsync(userId);
-        return list.Select(c => MapToDto(c, isAdmin: false)).ToList();
+        return await ComposeAsync(list, isAdmin: false);
     }
 
     public async Task<List<ClaimDto>> GetAllAsync(ClaimStatus? status)
     {
         var list = await _claims.GetAllAsync(status);
-        return list.Select(c => MapToDto(c, isAdmin: true)).ToList();
+        return await ComposeAsync(list, isAdmin: true);
     }
 
     public async Task<ClaimDto?> GetByIdAsync(int claimId, int userId, bool isAdmin)
@@ -43,7 +80,7 @@ public class ClaimService : IClaimService
         if (claim is null || (claim.UserId != userId && !isAdmin))
             return null;
 
-        return MapToDto(claim, isAdmin);
+        return (await ComposeAsync(new[] { claim }, isAdmin)).Single();
     }
 
     public async Task<ClaimDto> ReviewAsync(int claimId, int adminId, ClaimReviewRequest request)
@@ -60,21 +97,59 @@ public class ClaimService : IClaimService
         if (target == ClaimStatus.Rejected && string.IsNullOrWhiteSpace(notes))
             throw new BusinessRuleException("Please give a reason when rejecting a claim.");
 
+        // Approving is limited by the plan's coverage; the proc checks it against the other approved claims.
+        decimal? coverage = null;
+        if (target == ClaimStatus.Approved)
+        {
+            var enrollment = await _enrollments.GetAsync(claim.EnrollmentId)
+                ?? throw new InvalidOperationException($"Claim {claimId} refers to missing enrollment {claim.EnrollmentId}.");
+            coverage = await CoverageOfAsync(enrollment);
+        }
+
         // We pass the status we just read as the "from" status. If someone else changes the claim
         // between our read and this call, the proc finds no matching row and we get a 409.
-        var updated = await _claims.ReviewAsync(claimId, claim.Status, target, notes, adminId);
-        return MapToDto(updated, isAdmin: true);
+        var updated = await _claims.ReviewAsync(claimId, claim.Status, target, notes, adminId, coverage);
+        return (await ComposeAsync(new[] { updated }, isAdmin: true)).Single();
     }
 
-    private static ClaimDto MapToDto(InsuranceClaim c, bool isAdmin) => new()
+    // Plans are only ever deactivated, never deleted, so an enrollment's plan is always there.
+    private async Task<decimal> CoverageOfAsync(EnrollmentInfo enrollment)
+    {
+        var plan = await _plans.GetAsync(enrollment.PolicyId)
+            ?? throw new InvalidOperationException($"Enrollment {enrollment.EnrollmentId} refers to missing plan {enrollment.PolicyId}.");
+        return plan.CoverageAmount;
+    }
+
+    // Adds the plan (via Enrollments and Catalog) and the customer and reviewer names (Identity),
+    // with one call to each module for the whole list.
+    private async Task<List<ClaimDto>> ComposeAsync(IReadOnlyCollection<InsuranceClaim> claims, bool isAdmin)
+    {
+        if (claims.Count == 0) return new List<ClaimDto>();
+
+        var enrollments = await _enrollments.GetManyAsync(claims.Select(c => c.EnrollmentId));
+        var plans = await _plans.GetManyAsync(enrollments.Values.Select(e => e.PolicyId));
+        var userIds = claims.Select(c => c.UserId)
+            .Concat(claims.Where(c => c.ReviewedByUserId is not null).Select(c => c.ReviewedByUserId!.Value));
+        var users = await _users.GetManyAsync(userIds);
+
+        return claims.Select(c =>
+        {
+            var plan = plans[enrollments[c.EnrollmentId].PolicyId];
+            var customer = users.GetValueOrDefault(c.UserId);
+            var reviewer = c.ReviewedByUserId is { } reviewerId ? users.GetValueOrDefault(reviewerId) : null;
+            return MapToDto(c, plan, customer, reviewer, isAdmin);
+        }).ToList();
+    }
+
+    private static ClaimDto MapToDto(InsuranceClaim c, PlanInfo plan, UserAccount? customer, UserAccount? reviewer, bool isAdmin) => new()
     {
         ClaimId = c.ClaimId,
         ClaimNumber = c.ClaimNumber,
         EnrollmentId = c.EnrollmentId,
-        PolicyName = c.PolicyName,
-        PolicyType = c.PolicyType,
-        CustomerName = c.CustomerName,
-        CustomerEmail = c.CustomerEmail,
+        PolicyName = plan.PolicyName,
+        PolicyType = plan.PolicyType,
+        CustomerName = customer?.FullName ?? string.Empty,
+        CustomerEmail = customer?.Email ?? string.Empty,
         IncidentDate = c.IncidentDate,
         Description = c.Description,
         ClaimAmount = c.ClaimAmount,
@@ -82,7 +157,7 @@ public class ClaimService : IClaimService
         AdminNotes = c.AdminNotes,
         SubmittedAt = c.SubmittedAt,
         ReviewedAt = c.ReviewedAt,
-        ReviewedBy = c.ReviewedByName,
+        ReviewedBy = reviewer?.FullName,
         AllowedNextStatuses = isAdmin ? ClaimStatusTransitions.NextFrom(c.Status).ToList() : new List<ClaimStatus>()
     };
 }

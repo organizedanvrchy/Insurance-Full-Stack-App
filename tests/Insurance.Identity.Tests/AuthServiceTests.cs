@@ -1,4 +1,3 @@
-using Insurance.BuildingBlocks.Exceptions;
 using Insurance.BuildingBlocks.Security;
 using Insurance.Identity.DTOs;
 using Insurance.Identity.Exceptions;

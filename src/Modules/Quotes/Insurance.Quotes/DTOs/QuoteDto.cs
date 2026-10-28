@@ -1,5 +1,4 @@
 using Insurance.Catalog.Contracts;
-using Insurance.Quotes.Enums;
 using Insurance.Quotes.Rating;
 
 namespace Insurance.Quotes.DTOs;

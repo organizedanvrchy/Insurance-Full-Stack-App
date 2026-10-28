@@ -16,8 +16,22 @@ public class PolicyRepository : IPolicyRepository
     public async Task<List<Policy>> GetAllAsync(bool includeInactive)
     {
         await using var conn = _db.Create();
-        await using var cmd = conn.StoredProc("dbo.usp_Policy_GetAll");
+        await using var cmd = conn.StoredProc("catalog.usp_Policy_GetAll");
         cmd.AddParam("@IncludeInactive", SqlDbType.Bit, includeInactive);
+
+        await conn.OpenAsync();
+        await using var reader = await cmd.ExecuteReaderAsync();
+        var list = new List<Policy>();
+        while (await reader.ReadAsync()) list.Add(Map(reader));
+        return list;
+    }
+
+    // READ (by ids) -> the id list travels as one JSON parameter
+    public async Task<List<Policy>> GetManyAsync(IEnumerable<int> policyIds)
+    {
+        await using var conn = _db.Create();
+        await using var cmd = conn.StoredProc("catalog.usp_Policy_GetMany");
+        cmd.AddIdListParam("@PolicyIds", policyIds);
 
         await conn.OpenAsync();
         await using var reader = await cmd.ExecuteReaderAsync();
@@ -30,7 +44,7 @@ public class PolicyRepository : IPolicyRepository
     public async Task<Policy?> GetByIdAsync(int policyId)
     {
         await using var conn = _db.Create();
-        await using var cmd = conn.StoredProc("dbo.usp_Policy_GetById");
+        await using var cmd = conn.StoredProc("catalog.usp_Policy_GetById");
         cmd.AddParam("@PolicyId", SqlDbType.Int, policyId);
 
         await conn.OpenAsync();
@@ -42,7 +56,7 @@ public class PolicyRepository : IPolicyRepository
     public async Task<int> CreateAsync(Policy p)
     {
         await using var conn = _db.Create();
-        await using var cmd = conn.StoredProc("dbo.usp_Policy_Create");
+        await using var cmd = conn.StoredProc("catalog.usp_Policy_Create");
         AddWriteParams(cmd, p);
 
         await conn.OpenAsync();
@@ -53,7 +67,7 @@ public class PolicyRepository : IPolicyRepository
     public async Task<bool> UpdateAsync(Policy p)
     {
         await using var conn = _db.Create();
-        await using var cmd = conn.StoredProc("dbo.usp_Policy_Update");
+        await using var cmd = conn.StoredProc("catalog.usp_Policy_Update");
         cmd.AddParam("@PolicyId", SqlDbType.Int, p.PolicyId);
         AddWriteParams(cmd, p);
 
@@ -65,7 +79,7 @@ public class PolicyRepository : IPolicyRepository
     public async Task<bool> DeactivateAsync(int policyId)
     {
         await using var conn = _db.Create();
-        await using var cmd = conn.StoredProc("dbo.usp_Policy_Deactivate");
+        await using var cmd = conn.StoredProc("catalog.usp_Policy_Deactivate");
         cmd.AddParam("@PolicyId", SqlDbType.Int, policyId);
 
         await conn.OpenAsync();

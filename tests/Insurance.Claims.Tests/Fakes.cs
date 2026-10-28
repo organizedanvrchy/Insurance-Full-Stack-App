@@ -1,12 +1,17 @@
+using Insurance.Billing.Contracts;
+using Insurance.Catalog.Contracts;
+using Insurance.Claims.Contracts;
 using Insurance.Claims.Enums;
 using Insurance.Claims.Models;
 using Insurance.Claims.Repositories;
+using Insurance.Enrollments.Contracts;
+using Insurance.Identity.Contracts;
 
 namespace Insurance.Claims.Tests;
 
 // Fakes are tiny in-memory stand-ins for the 
-// real repositories. The services only know the
-// interfaces (IUserRepository and so on), so they 
+// real repositories and for the other modules' contracts.
+// The services only know the interfaces, so they 
 // can't tell the difference. That's dependency injection 
 // paying off: no database, no Azure, tests run in milliseconds.
 
@@ -15,10 +20,12 @@ public class FakeClaimRepository : IClaimRepository
     public List<InsuranceClaim> Claims { get; } = new();
 
     // Remembers how the service called ReviewAsync, so tests can check the arguments.
-    public (int ClaimId, ClaimStatus From, ClaimStatus To, string? Notes, int ReviewerId)? LastReview { get; private set; }
+    public (int ClaimId, ClaimStatus From, ClaimStatus To, string? Notes, int ReviewerId, decimal? Coverage)? LastReview { get; private set; }
+    public decimal? LastSubmitCoverage { get; private set; }
 
-    public Task<int> SubmitAsync(int userId, int enrollmentId, DateOnly incidentDate, string description, decimal amount)
+    public Task<int> SubmitAsync(int userId, int enrollmentId, DateOnly incidentDate, string description, decimal amount, decimal coverageAmount)
     {
+        LastSubmitCoverage = coverageAmount;
         var claim = new InsuranceClaim
         {
             ClaimId = Claims.Count + 1,
@@ -43,13 +50,76 @@ public class FakeClaimRepository : IClaimRepository
     public Task<InsuranceClaim?> GetByIdAsync(int claimId) =>
         Task.FromResult(Claims.FirstOrDefault(c => c.ClaimId == claimId));
 
-    public Task<InsuranceClaim> ReviewAsync(int claimId, ClaimStatus from, ClaimStatus to, string? adminNotes, int reviewerId)
+    public Task<InsuranceClaim> ReviewAsync(int claimId, ClaimStatus from, ClaimStatus to, string? adminNotes, int reviewerId, decimal? coverageAmount)
     {
-        LastReview = (claimId, from, to, adminNotes, reviewerId);
+        LastReview = (claimId, from, to, adminNotes, reviewerId, coverageAmount);
 
         var claim = Claims.Single(c => c.ClaimId == claimId);
         claim.Status = to;
         claim.AdminNotes = adminNotes ?? claim.AdminNotes;
+        claim.ReviewedByUserId = reviewerId;
         return Task.FromResult(claim);
     }
+
+    public Task<Dictionary<int, ClaimCounts>> GetCountsByUserAsync(IEnumerable<int> userIds) =>
+        Task.FromResult(Claims
+            .Where(c => userIds.Contains(c.UserId))
+            .GroupBy(c => c.UserId)
+            .ToDictionary(g => g.Key, g => new ClaimCounts(
+                g.Count(), g.Count(c => c.Status is ClaimStatus.Submitted or ClaimStatus.UnderReview))));
+}
+
+// The other modules, as the Claims module sees them through their contracts.
+
+public class FakeEnrollmentLookup : IEnrollmentLookup
+{
+    public Dictionary<int, EnrollmentInfo> Enrollments { get; } = new();
+
+    public Task<EnrollmentInfo?> GetAsync(int enrollmentId) =>
+        Task.FromResult(Enrollments.GetValueOrDefault(enrollmentId));
+
+    public Task<IReadOnlyDictionary<int, EnrollmentInfo>> GetManyAsync(IEnumerable<int> enrollmentIds) =>
+        Task.FromResult<IReadOnlyDictionary<int, EnrollmentInfo>>(
+            Enrollments.Where(e => enrollmentIds.Contains(e.Key)).ToDictionary(e => e.Key, e => e.Value));
+
+    public Task<IReadOnlyDictionary<int, int>> CountActiveByUserAsync(IEnumerable<int> userIds) =>
+        throw new NotSupportedException();
+}
+
+public class FakePremiumSchedule : IPremiumSchedule
+{
+    public HashSet<int> Overdue { get; } = new();
+
+    public Task<IReadOnlyDictionary<int, PremiumSummary>> GetSummariesAsync(IEnumerable<int> enrollmentIds) =>
+        Task.FromResult<IReadOnlyDictionary<int, PremiumSummary>>(enrollmentIds.Distinct().ToDictionary(
+            id => id, id => new PremiumSummary(0, 12, Overdue.Contains(id) ? 1 : 0, null, null)));
+
+    public Task CreateAsync(int enrollmentId, DateOnly startDate, int termMonths, decimal monthlyPremium) =>
+        throw new NotSupportedException();
+
+    public Task RemoveUnpaidAsync(int enrollmentId) => throw new NotSupportedException();
+}
+
+public class FakePlanCatalog : IPlanCatalog
+{
+    public static readonly PlanInfo Plan = new(1, "Test Plan", PolicyType.Home, 10_000m, 50m, 12, IsActive: true);
+
+    public Task<PlanInfo?> GetAsync(int policyId) =>
+        Task.FromResult<PlanInfo?>(policyId == Plan.PolicyId ? Plan : null);
+
+    public Task<IReadOnlyDictionary<int, PlanInfo>> GetManyAsync(IEnumerable<int> policyIds) =>
+        Task.FromResult<IReadOnlyDictionary<int, PlanInfo>>(
+            policyIds.Contains(Plan.PolicyId) ? new Dictionary<int, PlanInfo> { [Plan.PolicyId] = Plan } : new());
+}
+
+public class FakeUserDirectory : IUserDirectory
+{
+    public Dictionary<int, UserAccount> Users { get; } = new();
+
+    public Task<UserAccount?> GetAsync(int userId) =>
+        Task.FromResult(Users.GetValueOrDefault(userId));
+
+    public Task<IReadOnlyDictionary<int, UserAccount>> GetManyAsync(IEnumerable<int> userIds) =>
+        Task.FromResult<IReadOnlyDictionary<int, UserAccount>>(
+            Users.Where(u => userIds.Contains(u.Key)).ToDictionary(u => u.Key, u => u.Value));
 }

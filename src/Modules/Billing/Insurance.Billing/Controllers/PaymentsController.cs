@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using Insurance.Billing.DTOs;
-using Insurance.Billing.Enums;
 using Insurance.Billing.Services;
 using Insurance.BuildingBlocks.Security;
 using Microsoft.AspNetCore.Authorization;

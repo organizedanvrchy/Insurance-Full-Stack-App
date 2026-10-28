@@ -1,7 +1,7 @@
 using System.Data;
 using Insurance.BuildingBlocks.Data;
-using Insurance.BuildingBlocks.Exceptions;
 using Insurance.BuildingBlocks.Security;
+using Insurance.Identity.Contracts;
 using Insurance.Identity.Exceptions;
 using Insurance.Identity.Models;
 using Microsoft.Data.SqlClient;
@@ -16,7 +16,7 @@ public class UserRepository : IUserRepository
     public async Task<int> CreateAsync(User user)
     {
         await using var conn = _db.Create();
-        await using var cmd = conn.StoredProc("dbo.usp_User_Register");
+        await using var cmd = conn.StoredProc("accounts.usp_User_Register");
         cmd.AddParam("@FullName",     SqlDbType.NVarChar, user.FullName, 100);
         cmd.AddParam("@Email",        SqlDbType.NVarChar, user.Email, 256);
         cmd.AddParam("@PasswordHash", SqlDbType.NVarChar, user.PasswordHash, 100);
@@ -39,7 +39,7 @@ public class UserRepository : IUserRepository
     public async Task<User?> GetByEmailAsync(string email)
     {
         await using var conn = _db.Create();
-        await using var cmd = conn.StoredProc("dbo.usp_User_GetByEmail");
+        await using var cmd = conn.StoredProc("accounts.usp_User_GetByEmail");
         cmd.AddParam("@Email", SqlDbType.NVarChar, email, 256);
 
         await conn.OpenAsync();
@@ -50,12 +50,25 @@ public class UserRepository : IUserRepository
     public async Task<User?> GetByIdAsync(int userId)
     {
         await using var conn = _db.Create();
-        await using var cmd = conn.StoredProc("dbo.usp_User_GetById");
+        await using var cmd = conn.StoredProc("accounts.usp_User_GetById");
         cmd.AddParam("@UserId", SqlDbType.Int, userId);
 
         await conn.OpenAsync();
         await using var reader = await cmd.ExecuteReaderAsync();
         return await reader.ReadAsync() ? Map(reader) : null;
+    }
+
+    public async Task<List<UserAccount>> GetManyAsync(IEnumerable<int> userIds)
+    {
+        await using var conn = _db.Create();
+        await using var cmd = conn.StoredProc("accounts.usp_User_GetMany");
+        cmd.AddIdListParam("@UserIds", userIds);
+
+        await conn.OpenAsync();
+        await using var reader = await cmd.ExecuteReaderAsync();
+        var list = new List<UserAccount>();
+        while (await reader.ReadAsync()) list.Add(MapAccount(reader));
+        return list;
     }
 
     private static User Map(SqlDataReader r) => new()
@@ -70,4 +83,12 @@ public class UserRepository : IUserRepository
         IsActive     = r.GetBoolean(r.GetOrdinal("IsActive")),
         CreatedAt    = r.GetDateTime(r.GetOrdinal("CreatedAt"))
     };
+
+    // No password hash: this shape is for other modules.
+    private static UserAccount MapAccount(SqlDataReader r) => new(
+        r.GetInt32(r.GetOrdinal("UserId")),
+        r.GetString(r.GetOrdinal("FullName")),
+        r.GetString(r.GetOrdinal("Email")),
+        r.GetEnum<UserRole>("Role"),
+        r.GetBoolean(r.GetOrdinal("IsActive")));
 }

@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Insurance.BuildingBlocks.Security;
 using Insurance.Quotes.DTOs;
-using Insurance.Quotes.Enums;
 using Insurance.Quotes.Rating;
 using Insurance.Quotes.Services;
 using Microsoft.AspNetCore.Authorization;

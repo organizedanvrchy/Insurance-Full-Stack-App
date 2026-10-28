@@ -1,3 +1,4 @@
+using Insurance.Quotes.Contracts;
 using Insurance.Quotes.Rating;
 using Insurance.Quotes.Repositories;
 using Insurance.Quotes.Services;
@@ -12,6 +13,7 @@ public static class QuotesModule
     {
         services.AddScoped<IQuoteRepository, QuoteRepository>();
         services.AddScoped<IQuoteService, QuoteService>();
+        services.AddScoped<IQuoteRedemption, QuoteRedemption>();
 
         services.AddSingleton<IRatingStrategy, HealthRatingStrategy>();
         services.AddSingleton<IRatingStrategy, LifeRatingStrategy>();

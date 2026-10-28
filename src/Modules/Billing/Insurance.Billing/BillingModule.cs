@@ -1,3 +1,4 @@
+using Insurance.Billing.Contracts;
 using Insurance.Billing.Repositories;
 using Insurance.Billing.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,6 +12,8 @@ public static class BillingModule
     {
         services.AddScoped<IPaymentRepository, PaymentRepository>();
         services.AddScoped<IPaymentService, PaymentService>();
+
+        services.AddScoped<IPremiumSchedule, PremiumSchedule>();
         return services;
     }
 }

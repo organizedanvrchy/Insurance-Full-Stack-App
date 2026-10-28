@@ -1,9 +1,5 @@
 using System.Data;
 using Insurance.BuildingBlocks.Data;
-using Insurance.BuildingBlocks.Exceptions;
-using Insurance.Catalog.Contracts;
-using Insurance.Quotes.Enums;
-using Insurance.Quotes.Exceptions;
 using Insurance.Quotes.Models;
 using Microsoft.Data.SqlClient;
 
@@ -18,7 +14,7 @@ public class QuoteRepository : IQuoteRepository
         decimal basePremium, decimal monthlyPremium, DateTime expiresAtUtc)
     {
         await using var conn = _db.Create();
-        await using var cmd = conn.StoredProc("dbo.usp_Quote_Create");
+        await using var cmd = conn.StoredProc("quotes.usp_Quote_Create");
         cmd.AddParam("@UserId",         SqlDbType.Int, userId);
         cmd.AddParam("@PolicyId",       SqlDbType.Int, policyId);
         cmd.AddParam("@Answers",        SqlDbType.NVarChar, answersJson);      // no size: ADO.NET sizes it from the value
@@ -28,20 +24,13 @@ public class QuoteRepository : IQuoteRepository
         cmd.AddParam("@ExpiresAt",      SqlDbType.DateTime2, expiresAtUtc);
 
         await conn.OpenAsync();
-        try
-        {
-            return (int)(await cmd.ExecuteScalarAsync())!;
-        }
-        catch (SqlException ex) when (ex.Number == 50003)
-        {
-            throw new PolicyNotAvailableException(policyId);
-        }
+        return (int)(await cmd.ExecuteScalarAsync())!;
     }
 
     public async Task<Quote?> GetByIdAsync(int quoteId)
     {
         await using var conn = _db.Create();
-        await using var cmd = conn.StoredProc("dbo.usp_Quote_GetById");
+        await using var cmd = conn.StoredProc("quotes.usp_Quote_GetById");
         cmd.AddParam("@QuoteId", SqlDbType.Int, quoteId);
 
         await conn.OpenAsync();
@@ -49,15 +38,22 @@ public class QuoteRepository : IQuoteRepository
         return await reader.ReadAsync() ? Map(reader) : null;
     }
 
+    public async Task<bool> MarkUsedAsync(int quoteId, int enrollmentId)
+    {
+        await using var conn = _db.Create();
+        await using var cmd = conn.StoredProc("quotes.usp_Quote_MarkUsed");
+        cmd.AddParam("@QuoteId",      SqlDbType.Int, quoteId);
+        cmd.AddParam("@EnrollmentId", SqlDbType.Int, enrollmentId);
+
+        await conn.OpenAsync();
+        return (int)(await cmd.ExecuteScalarAsync())! == 1;
+    }
+
     private static Quote Map(SqlDataReader r) => new()
     {
         QuoteId        = r.GetInt32(r.GetOrdinal("QuoteId")),
         UserId         = r.GetInt32(r.GetOrdinal("UserId")),
         PolicyId       = r.GetInt32(r.GetOrdinal("PolicyId")),
-        PolicyName     = r.GetString(r.GetOrdinal("PolicyName")),
-        PolicyType     = r.GetEnum<PolicyType>("PolicyType"),
-        CoverageAmount = r.GetDecimal(r.GetOrdinal("CoverageAmount")),
-        TermMonths     = r.GetInt32(r.GetOrdinal("TermMonths")),
         BasePremium    = r.GetDecimal(r.GetOrdinal("BasePremium")),
         MonthlyPremium = r.GetDecimal(r.GetOrdinal("MonthlyPremium")),
         Breakdown      = r.GetString(r.GetOrdinal("Breakdown")),

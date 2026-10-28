@@ -2,7 +2,6 @@ using System.Text.Json;
 using Insurance.BuildingBlocks.Exceptions;
 using Insurance.Catalog.Contracts;
 using Insurance.Quotes.DTOs;
-using Insurance.Quotes.Enums;
 using Insurance.Quotes.Models;
 using Insurance.Quotes.Rating;
 using Insurance.Quotes.Repositories;
@@ -50,14 +49,18 @@ public class QuoteService : IQuoteService
             DateTime.UtcNow.Add(QuoteLifetime));
 
         var saved = await _quotes.GetByIdAsync(id);
-        return MapToDto(saved!);
+        return MapToDto(saved!, policy);
     }
 
     public async Task<QuoteDto?> GetByIdAsync(int quoteId, int userId)
     {
         var quote = await _quotes.GetByIdAsync(quoteId);
         if (quote is null || quote.UserId != userId) return null;   // same null for "missing" and "not yours"
-        return MapToDto(quote);
+
+        // Plans are only ever deactivated, never deleted, so the quote's plan is always there.
+        var policy = await _plans.GetAsync(quote.PolicyId)
+            ?? throw new InvalidOperationException($"Quote {quoteId} refers to missing plan {quote.PolicyId}.");
+        return MapToDto(quote, policy);
     }
 
     private async Task<PlanInfo> GetActivePolicyAsync(int policyId)
@@ -73,17 +76,17 @@ public class QuoteService : IQuoteService
             ? strategy
             : throw new BusinessRuleException($"Online quotes aren't available for {policy.PolicyType} policies yet.");
 
-    private static QuoteDto MapToDto(Quote q) => new()
+    private static QuoteDto MapToDto(Quote q, PlanInfo plan) => new()
     {
         QuoteId = q.QuoteId,
         PolicyId = q.PolicyId,
-        PolicyName = q.PolicyName,
-        PolicyType = q.PolicyType,
-        CoverageAmount = q.CoverageAmount,
-        TermMonths = q.TermMonths,
+        PolicyName = plan.PolicyName,
+        PolicyType = plan.PolicyType,
+        CoverageAmount = plan.CoverageAmount,
+        TermMonths = plan.TermMonths,
         BasePremium = q.BasePremium,
         MonthlyPremium = q.MonthlyPremium,
-        TotalOverTerm = q.MonthlyPremium * q.TermMonths,
+        TotalOverTerm = q.MonthlyPremium * plan.TermMonths,
         Factors = JsonSerializer.Deserialize<List<RatingFactor>>(q.Breakdown) ?? new List<RatingFactor>(),
         ExpiresAt = q.ExpiresAt,
         IsExpired = q.ExpiresAt < DateTime.UtcNow,

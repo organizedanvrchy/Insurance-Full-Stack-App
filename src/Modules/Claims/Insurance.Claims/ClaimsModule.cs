@@ -1,3 +1,4 @@
+using Insurance.Claims.Contracts;
 using Insurance.Claims.Repositories;
 using Insurance.Claims.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,6 +12,8 @@ public static class ClaimsModule
     {
         services.AddScoped<IClaimRepository, ClaimRepository>();
         services.AddScoped<IClaimService, ClaimService>();
+
+        services.AddScoped<IClaimStatistics, ClaimStatistics>();
         return services;
     }
 }

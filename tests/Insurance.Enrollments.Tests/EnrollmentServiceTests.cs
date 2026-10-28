@@ -1,3 +1,4 @@
+using Insurance.Billing.Contracts;
 using Insurance.BuildingBlocks.Exceptions;
 using Insurance.Enrollments.Contracts;
 using Insurance.Enrollments.DTOs;
@@ -13,11 +14,14 @@ public class EnrollmentServiceTests
     private static DateOnly Today => DateOnly.FromDateTime(DateTime.UtcNow);
 
     private readonly FakeEnrollmentRepository _repo = new();
+    private readonly FakeQuoteRedemption _quotes = new();
+    private readonly FakePlanCatalog _plans = new();
+    private readonly FakePremiumSchedule _premiums = new();
     private readonly EnrollmentService _sut;
 
     public EnrollmentServiceTests()
     {
-        _sut = new EnrollmentService(_repo);
+        _sut = new EnrollmentService(_repo, _quotes, _plans, _premiums);
     }
 
     // Start date window
@@ -47,12 +51,70 @@ public class EnrollmentServiceTests
     }
 
     [Fact]
-    public async Task Enrolling_passes_the_callers_id_and_the_quote_to_the_repository()
+    public async Task Enrolling_checks_the_quote_for_the_caller_and_takes_the_plan_and_premium_from_it()
     {
         await _sut.EnrollAsync(5, new EnrollmentRequest { QuoteId = 42, StartDate = Today });
 
-        Assert.Equal(5, _repo.LastCreate!.Value.UserId);
-        Assert.Equal(42, _repo.LastCreate!.Value.QuoteId);
+        Assert.Equal((42, 5), _quotes.LastLookup);
+        var created = _repo.LastCreate!.Value;
+        Assert.Equal(5, created.UserId);
+        Assert.Equal(1, created.PolicyId);          // from the quote
+        Assert.Equal(100m, created.MonthlyPremium); // the quoted price, not the plan's base rate
+        Assert.Equal(12, created.TermMonths);       // from the plan
+    }
+
+    [Fact]
+    public async Task Enrolling_creates_the_premium_schedule_and_uses_up_the_quote()
+    {
+        var dto = await _sut.EnrollAsync(5, new EnrollmentRequest { QuoteId = 42, StartDate = Today });
+
+        Assert.Equal(new[] { dto.EnrollmentId }, _premiums.Created);
+        Assert.Equal((42, dto.EnrollmentId), _quotes.MarkedUsed);
+        Assert.Equal("Test Plan", dto.PolicyName);
+        Assert.Equal(12, dto.PaymentsTotal);
+    }
+
+    [Fact]
+    public async Task A_quote_that_cannot_be_used_stops_before_anything_is_created()
+    {
+        _quotes.RejectWith = new BusinessRuleException("This quote has expired. Please request a new quote.");
+
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _sut.EnrollAsync(1, new EnrollmentRequest { QuoteId = 7 }));
+        Assert.Null(_repo.LastCreate);
+    }
+
+    [Fact]
+    public async Task A_plan_retired_since_the_quote_is_rejected()
+    {
+        _plans.Plans[1] = _plans.Plans[1] with { IsActive = false };
+
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _sut.EnrollAsync(1, new EnrollmentRequest { QuoteId = 7 }));
+        Assert.Null(_repo.LastCreate);
+    }
+
+    // Compensation: a failure after the enrollment row exists undoes the earlier steps
+
+    [Fact]
+    public async Task If_billing_fails_the_enrollment_is_removed_and_the_quote_stays_usable()
+    {
+        _premiums.FailCreate = true;
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.EnrollAsync(1, new EnrollmentRequest { QuoteId = 7 }));
+
+        Assert.Empty(_repo.Enrollments);
+        Assert.Single(_repo.Deleted);
+        Assert.Null(_quotes.MarkedUsed);
+    }
+
+    [Fact]
+    public async Task If_the_quote_was_used_meanwhile_the_enrollment_and_its_schedule_are_removed()
+    {
+        _quotes.FailMarkUsed = true;
+
+        await Assert.ThrowsAsync<ConflictException>(() => _sut.EnrollAsync(1, new EnrollmentRequest { QuoteId = 7 }));
+
+        Assert.Empty(_repo.Enrollments);
+        Assert.Equal(_repo.Deleted, _premiums.RemovedUnpaid);
     }
 
     [Fact]
@@ -68,15 +130,15 @@ public class EnrollmentServiceTests
 
     // Payment alerts
 
-    private static Enrollment Active(int overdue = 0, int? nextDueInDays = null) => new()
+    // Enrollment 1 on plan 1, with its payment progress as Billing would report it.
+    private Enrollment Active(int overdue = 0, int? nextDueInDays = null)
     {
-        EnrollmentId = 1,
-        UserId = 1,
-        PolicyName = "Test Plan",
-        Status = EnrollmentStatus.Active,
-        OverdueCount = overdue,
-        NextDueDate = nextDueInDays is { } days ? Today.AddDays(days) : null
-    };
+        _premiums.Summaries[1] = new PremiumSummary(
+            PaymentsPaid: 0, PaymentsTotal: 12, OverdueCount: overdue,
+            NextDueDate: nextDueInDays is { } days ? Today.AddDays(days) : null, NextDueAmount: null);
+
+        return new Enrollment { EnrollmentId = 1, UserId = 1, PolicyId = 1, Status = EnrollmentStatus.Active };
+    }
 
     private async Task<PaymentAlert> AlertFor(Enrollment enrollment)
     {
@@ -152,6 +214,7 @@ public class EnrollmentServiceTests
 
         Assert.True(await _sut.CancelAsync(1, userId: 1));
         Assert.Equal(EnrollmentStatus.Cancelled, _repo.Enrollments.Single().Status);
+        Assert.Equal(new[] { 1 }, _premiums.RemovedUnpaid);   // Billing drops the unpaid installments
     }
 
     [Fact]
@@ -161,5 +224,6 @@ public class EnrollmentServiceTests
 
         Assert.False(await _sut.CancelAsync(1, userId: 2));
         Assert.Equal(EnrollmentStatus.Active, _repo.Enrollments.Single().Status);
+        Assert.Empty(_premiums.RemovedUnpaid);
     }
 }

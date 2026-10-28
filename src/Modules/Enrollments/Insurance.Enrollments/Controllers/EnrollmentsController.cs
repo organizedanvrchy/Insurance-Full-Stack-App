@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Insurance.BuildingBlocks.Security;
 using Insurance.Enrollments.DTOs;
-using Insurance.Enrollments.Enums;
 using Insurance.Enrollments.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;

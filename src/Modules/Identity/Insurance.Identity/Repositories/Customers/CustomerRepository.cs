@@ -13,7 +13,7 @@ public class CustomerRepository : ICustomerRepository
     public async Task<List<CustomerSummary>> GetAllAsync(string? search, bool? isActive)
     {
         await using var conn = _db.Create();
-        await using var cmd = conn.StoredProc("dbo.usp_Customer_GetAll");
+        await using var cmd = conn.StoredProc("accounts.usp_Customer_GetAll");
         cmd.AddParam("@Search",   SqlDbType.NVarChar, search, 100);   // null => DBNull => "no filter"
         cmd.AddParam("@IsActive", SqlDbType.Bit, isActive);
 
@@ -27,7 +27,7 @@ public class CustomerRepository : ICustomerRepository
     public async Task<CustomerSummary?> SetActiveAsync(int userId, bool isActive)
     {
         await using var conn = _db.Create();
-        await using var cmd = conn.StoredProc("dbo.usp_Customer_SetActive");
+        await using var cmd = conn.StoredProc("accounts.usp_Customer_SetActive");
         cmd.AddParam("@UserId",   SqlDbType.Int, userId);
         cmd.AddParam("@IsActive", SqlDbType.Bit, isActive);
 
@@ -43,9 +43,6 @@ public class CustomerRepository : ICustomerRepository
         Email          = r.GetString(r.GetOrdinal("Email")),
         Phone          = r.GetStringOrNull("Phone"),
         IsActive       = r.GetBoolean(r.GetOrdinal("IsActive")),
-        CreatedAt      = r.GetUtcDateTime("CreatedAt"),
-        ActivePolicies = r.GetInt32(r.GetOrdinal("ActivePolicies")),
-        TotalClaims    = r.GetInt32(r.GetOrdinal("TotalClaims")),
-        OpenClaims     = r.GetInt32(r.GetOrdinal("OpenClaims"))
+        CreatedAt      = r.GetUtcDateTime("CreatedAt")
     };
 }

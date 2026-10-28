@@ -118,7 +118,7 @@ flowchart TD
 
 Each layer only knows the one below it, through interfaces registered with dependency injection.
 
-The API is a **modular monolith**: one deployable host made of six modules (Identity, Catalog, Quotes, Enrollments, Billing, Claims), each in its own project. A module may use another module only through that module's `*.Contracts` project, and `Insurance.Architecture.Tests` fails the build if one reaches into another's implementation. This keeps every module ready to be extracted into its own service. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for sequence diagrams, the ER diagram, the claim workflow, the rating engine, the security model and the complete error-number registry.
+The API is a **modular monolith**: one deployable host made of six modules (Identity, Catalog, Quotes, Enrollments, Billing, Claims), each in its own project and its own SQL schema. A module may use another module only through that module's `*.Contracts` project, and `Insurance.Architecture.Tests` fails the build if one reaches into another's implementation. No stored procedure or view reads another module's schema: data from several modules is composed in C#. This keeps every module ready to be extracted into its own service. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for sequence diagrams, the ER diagram, the claim workflow, the rating engine, the security model and the complete error-number registry.
 
 ## Key business rules
 
@@ -153,7 +153,9 @@ cd insurance-management-system
 
 ### 2. Create the database
 
-Run the scripts in `database/` **in numeric order** (VS Code with the mssql extension, SSMS, Azure Data Studio or `sqlcmd` all work).
+Run the scripts in `Database/` **in numeric order** (VS Code with the mssql extension, SSMS, Azure Data Studio or `sqlcmd` all work).
+
+**Upgrading an existing database?** Run only `11_module_schemas.sql`. It moves every table into its module's schema in place, keeps all data, and is safe to re-run. Then deploy the new API.
 
 | Script | Purpose |
 |---|---|
@@ -167,8 +169,9 @@ Run the scripts in `database/` **in numeric order** (VS Code with the mssql exte
 | `08_admin_customers.sql` | Customer summary view and procedures |
 | `09_quotes.sql` | Quotes table and procedures, and the quote-based enrollment procedure |
 | `10_seed_policies.sql` | 20 plans: four variants for each policy type |
-| `11_seed_demo_data.sql` | *Optional:* demo customers, enrollments, payments and claims |
-| `12_remove_demo_data.sql` | *Optional:* removes the demo data |
+| `11_module_schemas.sql` | One schema per API module (`accounts`, `catalog`, `quotes`, `enrollments`, `billing`, `claims`): moves the tables and replaces every view and procedure so none reads another module's schema |
+| `12_seed_demo_data.sql` | *Optional:* demo customers, enrollments, payments and claims |
+| `13_remove_demo_data.sql` | *Optional:* removes the demo data |
 
 ### 3. Configure and run the API
 
@@ -202,14 +205,14 @@ Open <http://localhost:4200>. The API address is set in `src/app/core/api.config
 There is intentionally no public admin sign-up. Register a normal account in the app, then promote it:
 
 ```sql
-UPDATE dbo.Users SET Role = 'Admin' WHERE Email = 'you@example.com';
+UPDATE accounts.Users SET Role = 'Admin' WHERE Email = 'you@example.com';
 ```
 
 Sign in again so the new role is placed in your token.
 
 ## Demo accounts
 
-After running `11_seed_demo_data.sql`, every demo customer signs in with the password **`Demo#2026pass`**.
+After running `12_seed_demo_data.sql`, every demo customer signs in with the password **`Demo#2026pass`**.
 
 | Customer | Email | What to look at |
 |---|---|---|
@@ -275,8 +278,10 @@ dotnet test Insurance.sln
 | `RatingStrategyTests` | Prices for every policy type, underwriting declines, answer validation |
 | `ClaimStatusTransitionsTests` | Every allowed and blocked workflow move |
 | `AuthServiceTests` | Password hashing, email normalizing, role forcing, inactive users |
-| `EnrollmentServiceTests` | Start-date window, payment alert thresholds, ownership, cancellation |
-| `ClaimServiceTests` | Review rules, the concurrency guard, claim visibility |
+| `EnrollmentServiceTests` | Start-date window, payment alert thresholds, ownership, cancellation, enrolling across modules and undoing it on failure |
+| `ClaimServiceTests` | Review rules, the concurrency guard, claim visibility, claim eligibility, names and plans from other modules |
+| `PaymentServiceTests` | Ownership, already paid, payments on cancelled and expired policies |
+| `QuoteRedemptionTests` | Quote ownership, expiry and one-time use |
 | `ModuleBoundaryTests` | No module references another module's implementation, only its `*.Contracts` |
 
 The data layer (stored procedures and repositories) is verified through Swagger and the demo data rather than automated integration tests.
@@ -285,7 +290,7 @@ The data layer (stored procedures and repositories) is verified through Swagger 
 
 ```
 insurance-management-system/
-├── Database/                  SQL scripts 01-12 (schema, procedures, views, seed data)
+├── Database/                  SQL scripts 01-13 (schema, procedures, views, module schemas, seed data)
 ├── Insurance.sln
 ├── src/
 │   ├── Host/Insurance.Api/    The one deployable: Program.cs composes the modules, auth, CORS, Swagger
@@ -312,7 +317,7 @@ insurance-management-system/
 
 The API and the Angular build each run on an Azure App Service, with an Azure SQL Database behind the API.
 
-1. Run the SQL scripts against the Azure SQL database (remove the `USE` line).
+1. Run the SQL scripts against the Azure SQL database (remove the `USE` line). For a database that already runs the previous version, run only `11_module_schemas.sql`, before deploying the new API.
 2. Set these **Application settings** on the API's App Service (these override `appsettings.json`):
 
    | Name | Value |

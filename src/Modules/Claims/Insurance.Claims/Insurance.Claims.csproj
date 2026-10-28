@@ -9,8 +9,10 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\BuildingBlocks\Insurance.BuildingBlocks\Insurance.BuildingBlocks.csproj" />
     <ProjectReference Include="..\Insurance.Claims.Contracts\Insurance.Claims.Contracts.csproj" />
+    <ProjectReference Include="..\..\Identity\Insurance.Identity.Contracts\Insurance.Identity.Contracts.csproj" />
     <ProjectReference Include="..\..\Catalog\Insurance.Catalog.Contracts\Insurance.Catalog.Contracts.csproj" />
     <ProjectReference Include="..\..\Enrollments\Insurance.Enrollments.Contracts\Insurance.Enrollments.Contracts.csproj" />
+    <ProjectReference Include="..\..\Billing\Insurance.Billing.Contracts\Insurance.Billing.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

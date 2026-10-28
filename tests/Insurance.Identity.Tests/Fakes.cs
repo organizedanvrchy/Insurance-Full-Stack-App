@@ -1,3 +1,4 @@
+using Insurance.Identity.Contracts;
 using Insurance.Identity.Exceptions;
 using Insurance.Identity.Models;
 using Insurance.Identity.Repositories;
@@ -32,6 +33,10 @@ public class FakeUserRepository : IUserRepository
 
     public Task<User?> GetByIdAsync(int userId) =>
         Task.FromResult(Users.FirstOrDefault(u => u.UserId == userId));
+
+    public Task<List<UserAccount>> GetManyAsync(IEnumerable<int> userIds) =>
+        Task.FromResult(Users.Where(u => userIds.Contains(u.UserId))
+            .Select(u => new UserAccount(u.UserId, u.FullName, u.Email, u.Role, u.IsActive)).ToList());
 }
 
 public class FakeTokenService : ITokenService

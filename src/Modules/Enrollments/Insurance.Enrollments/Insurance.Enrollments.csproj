@@ -10,6 +10,8 @@
     <ProjectReference Include="..\..\..\BuildingBlocks\Insurance.BuildingBlocks\Insurance.BuildingBlocks.csproj" />
     <ProjectReference Include="..\Insurance.Enrollments.Contracts\Insurance.Enrollments.Contracts.csproj" />
     <ProjectReference Include="..\..\Catalog\Insurance.Catalog.Contracts\Insurance.Catalog.Contracts.csproj" />
+    <ProjectReference Include="..\..\Quotes\Insurance.Quotes.Contracts\Insurance.Quotes.Contracts.csproj" />
+    <ProjectReference Include="..\..\Billing\Insurance.Billing.Contracts\Insurance.Billing.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

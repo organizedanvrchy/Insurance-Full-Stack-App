@@ -1,6 +1,6 @@
 namespace Insurance.Identity.Models;
 
-// Read model for the admin customers list (comes from vw_CustomerSummary).
+// Read model for the admin customers list. The counts come from the Enrollments and Claims modules.
 public class CustomerSummary
 {
     public int UserId { get; set; }

@@ -1,4 +1,5 @@
 using System.Data;
+using System.Text.Json;
 using Microsoft.Data.SqlClient;
 
 namespace Insurance.BuildingBlocks.Data;
@@ -42,6 +43,14 @@ public static class SqlExtensions
         cmd.Parameters.Add(param);
         return param;
     }
+
+    /// <summary>
+    /// Adds a list of ids as a JSON array ("[1,2,3]"). 
+    /// The proc reads it with OPENJSON, so one call 
+    /// can fetch many rows without a table type.
+    /// </summary>
+    public static SqlParameter AddIdListParam(this SqlCommand cmd, string name, IEnumerable<int> ids) =>
+        cmd.AddParam(name, SqlDbType.NVarChar, JsonSerializer.Serialize(ids.Distinct()));
 
     /// <summary>
     /// Reads a string column (e.g. 'Admin') 

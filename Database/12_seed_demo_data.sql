@@ -2,10 +2,12 @@
    Password for every demo customer:  Demo#2026pass     
    (emails all end in @demo.example)
 
-   Requires: 10_seed_policies.sql (the plans) and an 
-   existing admin account (used as the claim reviewer).
+   Requires: 10_seed_policies.sql (the plans), 11_module_schemas.sql
+   and an existing admin account (used as the claim reviewer).
+   This script fills every module's schema at once, which is
+   fine for dev seed data and nothing else.
    Safe to re-run: skipped if demo customers already exist. 
-   Remove everything with 12_remove_demo_data.sql.
+   Remove everything with 13_remove_demo_data.sql.
    All dates are relative to today. The ages in the quote 
    breakdown labels assume an October 2026 run. 
 */
@@ -13,14 +15,14 @@
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
 
-IF EXISTS (SELECT 1 FROM dbo.Users WHERE Email LIKE N'%@demo.example')
+IF EXISTS (SELECT 1 FROM accounts.Users WHERE Email LIKE N'%@demo.example')
 BEGIN
-    PRINT 'Demo data already exists. Nothing was changed. Run 12_remove_demo_data.sql first to reseed.';
+    PRINT 'Demo data already exists. Nothing was changed. Run 13_remove_demo_data.sql first to reseed.';
     RETURN;
 END
 
 DECLARE @Today   DATE = CAST(SYSUTCDATETIME() AS DATE);
-DECLARE @AdminId INT  = (SELECT TOP (1) UserId FROM dbo.Users WHERE Role = 'Admin' ORDER BY UserId);
+DECLARE @AdminId INT  = (SELECT TOP (1) UserId FROM accounts.Users WHERE Role = 'Admin' ORDER BY UserId);
 DECLARE @Missing NVARCHAR(MAX), @Msg NVARCHAR(500);
 
 SELECT @Missing = STRING_AGG(n.PolicyName, N', ')
@@ -28,7 +30,7 @@ FROM (VALUES (N'Auto Full Coverage'), (N'Auto Standard Coverage'), (N'Auto Basic
              (N'Silver Health Plan'), (N'Gold Health Plan'), (N'Term Life 20-Year'),
              (N'Homeowners Preferred'), (N'Renters Insurance'),
              (N'Single-Trip Comprehensive'), (N'Single-Trip Basic')) AS n (PolicyName)
-WHERE NOT EXISTS (SELECT 1 FROM dbo.Policies p WHERE p.PolicyName = n.PolicyName);
+WHERE NOT EXISTS (SELECT 1 FROM catalog.Policies p WHERE p.PolicyName = n.PolicyName);
 
 IF @Missing IS NOT NULL
 BEGIN
@@ -44,7 +46,7 @@ BEGIN TRANSACTION;
 /* 
 1. CUSTOMERS 
 */
-INSERT INTO dbo.Users (FullName, Email, PasswordHash, Phone, Address, Role, IsActive, CreatedAt)
+INSERT INTO accounts.Users (FullName, Email, PasswordHash, Phone, Address, Role, IsActive, CreatedAt)
 VALUES
  (N'Emma Carter',     N'emma.carter@demo.example',     N'$2a$11$DeKme8rKt71zDTH/0vm.0.SO0VNtq/tAN1/YT8zDh5vauglwgwh62', N'(203) 555-0141', N'48 Maple Avenue, Stamford, CT 06902',     'Customer', 1, DATEADD(DAY, -140, SYSUTCDATETIME())),
  (N'Marcus Johnson',  N'marcus.johnson@demo.example',  N'$2a$11$2M4YMR5gRWdSnsKiyHJ6YeRa2ti5e9LKMVbA8je3cRcpddgzxA3zG', N'(203) 555-0172', N'112 Harbor View Drive, Norwalk, CT 06854', 'Customer', 1, DATEADD(DAY, -170, SYSUTCDATETIME())),
@@ -119,7 +121,7 @@ VALUES
   N'[{"Label":"Home age 18 yr","Multiplier":1.00},{"Label":"No security system","Multiplier":1.00},{"Label":"Claims in last 5 years: 0","Multiplier":1.00}]',
   14.00, 14.00),
 
- -- Tyler: cancelled after 2 payments (unpaid installments are removed, like usp_Enrollment_Cancel does)
+ -- Tyler: cancelled after 2 payments (unpaid installments are removed, as cancelling does)
  (N'tyler.brooks@demo.example', N'Auto Basic Liability', 3, 0, 2, 'Cancelled',
   N'{"dateOfBirth":"1999-12-05","vehicleYear":2012,"atFaultAccidents":2,"annualMileage":"7,500 to 15,000"}',
   N'[{"Label":"Driver age 26","Multiplier":1.00},{"Label":"Vehicle age 14 yr","Multiplier":0.90},{"Label":"At-fault accidents: 2","Multiplier":1.70},{"Label":"Mileage: 7,500 to 15,000","Multiplier":1.00}]',
@@ -128,26 +130,26 @@ VALUES
 /*
 3. ENROLLMENTS 
 */
-INSERT INTO dbo.Enrollments (UserId, PolicyId, StartDate, EndDate, MonthlyPremium, Status, CreatedAt)
+INSERT INTO enrollments.Enrollments (UserId, PolicyId, StartDate, EndDate, MonthlyPremium, Status, CreatedAt)
 SELECT u.UserId, p.PolicyId, st.StartDate, DATEADD(MONTH, p.TermMonths, st.StartDate), s.MonthlyPremium, s.EnrollStatus,
        CASE WHEN st.StartDate < @Today
             THEN DATEADD(HOUR, 10, CAST(st.StartDate AS DATETIME2))
             ELSE SYSUTCDATETIME() END
 FROM #Spec s
-JOIN dbo.Users u    ON u.Email = s.Email
-JOIN dbo.Policies p ON p.PolicyName = s.PolicyName
+JOIN accounts.Users u    ON u.Email = s.Email
+JOIN catalog.Policies p ON p.PolicyName = s.PolicyName
 CROSS APPLY (SELECT DATEADD(DAY, -s.StartDaysAgo, DATEADD(MONTH, -s.StartMonthsAgo, @Today)) AS StartDate) st;
 
 /*
 4. QUOTES (each enrollment came from one) 
 */
-INSERT INTO dbo.Quotes (UserId, PolicyId, Answers, Breakdown, BasePremium, MonthlyPremium, CreatedAt, ExpiresAt, EnrollmentId)
+INSERT INTO quotes.Quotes (UserId, PolicyId, Answers, Breakdown, BasePremium, MonthlyPremium, CreatedAt, ExpiresAt, EnrollmentId)
 SELECT e.UserId, e.PolicyId, s.Answers, s.Breakdown, s.BasePremium, s.MonthlyPremium,
        DATEADD(DAY, -1, e.CreatedAt), DATEADD(DAY, 29, e.CreatedAt), e.EnrollmentId
 FROM #Spec s
-JOIN dbo.Users u       ON u.Email = s.Email
-JOIN dbo.Policies p    ON p.PolicyName = s.PolicyName
-JOIN dbo.Enrollments e ON e.UserId = u.UserId AND e.PolicyId = p.PolicyId;
+JOIN accounts.Users u       ON u.Email = s.Email
+JOIN catalog.Policies p    ON p.PolicyName = s.PolicyName
+JOIN enrollments.Enrollments e ON e.UserId = u.UserId AND e.PolicyId = p.PolicyId;
 
 /* 
 5. PREMIUM PAYMENTS
@@ -159,14 +161,14 @@ One row per month of the term. The first PaidCount are paid on their due date; t
     UNION ALL
     SELECT N + 1 FROM Nums WHERE N < 599
 )
-INSERT INTO dbo.PremiumPayments (EnrollmentId, DueDate, Amount, PaidDate, Status)
+INSERT INTO billing.PremiumPayments (EnrollmentId, DueDate, Amount, PaidDate, Status)
 SELECT e.EnrollmentId, d.DueDate, e.MonthlyPremium,
        CASE WHEN n.N < s.PaidCount THEN d.DueDate END,
        CASE WHEN n.N < s.PaidCount THEN 'Paid' ELSE 'Pending' END
 FROM #Spec s
-JOIN dbo.Users u       ON u.Email = s.Email
-JOIN dbo.Policies p    ON p.PolicyName = s.PolicyName
-JOIN dbo.Enrollments e ON e.UserId = u.UserId AND e.PolicyId = p.PolicyId
+JOIN accounts.Users u       ON u.Email = s.Email
+JOIN catalog.Policies p    ON p.PolicyName = s.PolicyName
+JOIN enrollments.Enrollments e ON e.UserId = u.UserId AND e.PolicyId = p.PolicyId
 JOIN Nums n            ON n.N < p.TermMonths
 CROSS APPLY (SELECT DATEADD(MONTH, n.N, e.StartDate) AS DueDate) d
 WHERE NOT (s.EnrollStatus = 'Cancelled' AND n.N >= s.PaidCount)   -- cancelled: unpaid rows were removed
@@ -215,12 +217,12 @@ DECLARE @i INT = 1, @n INT = (SELECT COUNT(*) FROM #ClaimSpec), @Seq BIGINT;
 
 WHILE @i <= @n
 BEGIN
-    SET @Seq = NEXT VALUE FOR dbo.ClaimNumberSeq;
+    SET @Seq = NEXT VALUE FOR claims.ClaimNumberSeq;
 
-    INSERT INTO dbo.Claims (ClaimNumber, EnrollmentId, IncidentDate, Description, ClaimAmount, Status, AdminNotes,
-                            SubmittedAt, ReviewedAt, ReviewedByUserId)
+    INSERT INTO claims.Claims (ClaimNumber, EnrollmentId, UserId, IncidentDate, Description, ClaimAmount, Status, AdminNotes,
+                               SubmittedAt, ReviewedAt, ReviewedByUserId)
     SELECT CONCAT(N'CLM-', YEAR(DATEADD(DAY, -c.SubmittedDaysAgo, @Today)), N'-', RIGHT(CONCAT(N'000000', @Seq), 6)),
-           e.EnrollmentId,
+           e.EnrollmentId, u.UserId,
            DATEADD(DAY, -c.IncidentDaysAgo, @Today),
            c.Description, c.ClaimAmount, c.Status, c.AdminNotes,
            DATEADD(HOUR, 14, CAST(DATEADD(DAY, -c.SubmittedDaysAgo, @Today) AS DATETIME2)),
@@ -228,9 +230,9 @@ BEGIN
                 ELSE DATEADD(HOUR, 16, CAST(DATEADD(DAY, -c.ReviewedDaysAgo, @Today) AS DATETIME2)) END,
            CASE WHEN c.ReviewedDaysAgo IS NULL THEN NULL ELSE @AdminId END
     FROM #ClaimSpec c
-    JOIN dbo.Users u       ON u.Email = c.Email
-    JOIN dbo.Policies p    ON p.PolicyName = c.PolicyName
-    JOIN dbo.Enrollments e ON e.UserId = u.UserId AND e.PolicyId = p.PolicyId
+    JOIN accounts.Users u       ON u.Email = c.Email
+    JOIN catalog.Policies p    ON p.PolicyName = c.PolicyName
+    JOIN enrollments.Enrollments e ON e.UserId = u.UserId AND e.PolicyId = p.PolicyId
     WHERE c.Id = @i;
 
     SET @i += 1;
@@ -242,16 +244,22 @@ DROP TABLE #Spec;
 COMMIT TRANSACTION;
 
 /* Check results */
-SELECT u.FullName, e.PolicyName, e.Status, e.PaymentsPaid, e.PaymentsTotal, e.OverdueCount, e.NextDueDate, e.MonthlyPremium
-FROM dbo.vw_EnrollmentDetails e
-JOIN dbo.Users u ON u.UserId = e.UserId
+SELECT u.FullName, p.PolicyName, e.Status, e.StartDate, e.EndDate, e.MonthlyPremium,
+       (SELECT COUNT(*) FROM billing.PremiumPayments pp WHERE pp.EnrollmentId = e.EnrollmentId AND pp.Status = 'Paid') AS PaymentsPaid,
+       (SELECT COUNT(*) FROM billing.PremiumPayments pp WHERE pp.EnrollmentId = e.EnrollmentId)                       AS PaymentsTotal
+FROM enrollments.vw_EnrollmentDetails e
+JOIN accounts.Users u   ON u.UserId = e.UserId
+JOIN catalog.Policies p ON p.PolicyId = e.PolicyId
 WHERE u.Email LIKE N'%@demo.example'
 ORDER BY u.FullName, e.StartDate;
 
-SELECT ClaimNumber, CustomerName, PolicyName, ClaimAmount, Status
-FROM dbo.vw_ClaimDetails
-WHERE CustomerEmail LIKE N'%@demo.example'
-ORDER BY ClaimNumber;
+SELECT c.ClaimNumber, u.FullName AS CustomerName, p.PolicyName, c.ClaimAmount, c.Status
+FROM claims.Claims c
+JOIN accounts.Users u          ON u.UserId = c.UserId
+JOIN enrollments.Enrollments e ON e.EnrollmentId = c.EnrollmentId
+JOIN catalog.Policies p        ON p.PolicyId = e.PolicyId
+WHERE u.Email LIKE N'%@demo.example'
+ORDER BY c.ClaimNumber;
 
 PRINT 'Demo data created. Log in as any @demo.example customer with the password Demo#2026pass.';
 GO
